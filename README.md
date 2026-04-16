@@ -3,7 +3,7 @@ Implementing TLS via Self Signed Certificates in AWS
 
 ## Summary
 
-This repository contains a hands-on lab for learning TLS by creating a private root Certificate Authority (CA), issuing a server certificate, deploying it on Apache in Amazon EC2, observing trust warnings, and then resolving those warnings by importing the CA trust anchor.
+This repository contains a hands-on lab for learning TLS by creating a private Root Certificate Authority (CA), issuing a server certificate, deploying it on Apache in Amazon EC2, observing trust warnings, and then resolving those warnings by importing the CA trust anchor.
 
 The lab content is designed for step-by-step learning:
 
