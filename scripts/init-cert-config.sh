@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TEMPLATE_DIR="$ROOT_DIR/templates"
+
+CSR_TARGET="$ROOT_DIR/server.csr.cnf"
+EXT_TARGET="$ROOT_DIR/server_v3.ext"
+
+CSR_TEMPLATE="$TEMPLATE_DIR/server.csr.cnf.template"
+CSR_EXAMPLE="$TEMPLATE_DIR/server.csr.cnf.example"
+EXT_TEMPLATE="$TEMPLATE_DIR/server_v3.ext.template"
+EXT_EXAMPLE="$TEMPLATE_DIR/server_v3.ext.example"
+
+for required in "$CSR_TEMPLATE" "$CSR_EXAMPLE" "$EXT_TEMPLATE" "$EXT_EXAMPLE"; do
+  if [[ ! -f "$required" ]]; then
+    echo "Missing required template file: $required" >&2
+    exit 1
+  fi
+done
+
+echo "Initialize certificate config files"
+echo "---------------------------------"
+echo "Choose source:"
+echo "  1) Generic placeholders (.template)"
+echo "  2) Pre-filled EC2-style examples (.example)"
+read -r -p "Enter choice [1/2, default 1]: " choice
+choice="${choice:-1}"
+
+if [[ "$choice" == "2" ]]; then
+  cp "$CSR_EXAMPLE" "$CSR_TARGET"
+  cp "$EXT_EXAMPLE" "$EXT_TARGET"
+  echo "Copied example files to:"
+else
+  cp "$CSR_TEMPLATE" "$CSR_TARGET"
+  cp "$EXT_TEMPLATE" "$EXT_TARGET"
+  echo "Copied template files to:"
+fi
+
+echo "  - $CSR_TARGET"
+echo "  - $EXT_TARGET"
+echo
+
+read -r -p "Primary DNS name (leave empty to skip): " primary_dns
+read -r -p "Primary IP address (leave empty to skip): " primary_ip
+
+if [[ -n "${primary_dns}" ]]; then
+  sed -i.bak "s|^CN = .*|CN = ${primary_dns}|" "$CSR_TARGET"
+fi
+
+alt_lines=()
+dns_idx=1
+ip_idx=1
+
+if [[ -n "${primary_dns}" ]]; then
+  alt_lines+=("DNS.${dns_idx} = ${primary_dns}")
+  dns_idx=$((dns_idx + 1))
+fi
+
+if [[ -n "${primary_ip}" ]]; then
+  alt_lines+=("IP.${ip_idx} = ${primary_ip}")
+  ip_idx=$((ip_idx + 1))
+fi
+
+echo
+echo "Add extra SAN entries. Press Enter when done."
+while true; do
+  read -r -p "Add SAN type [dns/ip/none]: " san_type
+  san_type="$(printf '%s' "$san_type" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ -z "$san_type" || "$san_type" == "none" ]]; then
+    break
+  fi
+
+  case "$san_type" in
+    dns)
+      read -r -p "DNS value: " dns_val
+      if [[ -n "$dns_val" ]]; then
+        alt_lines+=("DNS.${dns_idx} = ${dns_val}")
+        dns_idx=$((dns_idx + 1))
+      fi
+      ;;
+    ip)
+      read -r -p "IP value: " ip_val
+      if [[ -n "$ip_val" ]]; then
+        alt_lines+=("IP.${ip_idx} = ${ip_val}")
+        ip_idx=$((ip_idx + 1))
+      fi
+      ;;
+    *)
+      echo "Unknown type. Use dns, ip, or none."
+      ;;
+  esac
+done
+
+if [[ "${#alt_lines[@]}" -gt 0 ]]; then
+  awk '/^\[alt_names\]/{print; flag=1; next} flag{next} {print}' "$EXT_TARGET" > "${EXT_TARGET}.tmp"
+  {
+    cat "${EXT_TARGET}.tmp"
+    printf '\n[alt_names]\n'
+    for line in "${alt_lines[@]}"; do
+      printf '%s\n' "$line"
+    done
+  } > "$EXT_TARGET"
+  rm -f "${EXT_TARGET}.tmp"
+fi
+
+rm -f "$CSR_TARGET.bak"
+
+echo
+echo "Done."
+echo "Review and adjust as needed:"
+echo "  - $CSR_TARGET"
+echo "  - $EXT_TARGET"
+echo
+echo "Next steps:"
+echo "  openssl req -new -nodes -out server.csr -keyout server.key -config server.csr.cnf"
+echo "  openssl x509 -req -in server.csr -CA ca.pem -CAkey privkey.pem -CAcreateserial -out server.crt -days 825 -sha256 -extfile server_v3.ext"
