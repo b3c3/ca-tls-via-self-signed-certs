@@ -94,7 +94,8 @@ while true; do
 done
 
 if [[ "${#alt_lines[@]}" -gt 0 ]]; then
-  awk '/^\[alt_names\]/{print; flag=1; next} flag{next} {print}' "$EXT_TARGET" > "${EXT_TARGET}.tmp"
+  # Remove any existing [alt_names] block before rebuilding.
+  awk '/^\[alt_names\]/{flag=1; next} flag{next} {print}' "$EXT_TARGET" > "${EXT_TARGET}.tmp"
   {
     cat "${EXT_TARGET}.tmp"
     printf '\n[alt_names]\n'
