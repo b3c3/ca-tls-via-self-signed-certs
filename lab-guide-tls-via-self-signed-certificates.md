@@ -298,7 +298,7 @@ Why warnings appeared earlier:
 
 How production differs:
 
-- In real-world public deployments, certificates are typically issued by public CAs that are already trusted by browsers.
+- In the real-world public deployments, certificates are typically issued by public CAs that are already trusted by browsers.
 - That avoids browser trust warnings for users.
 - For training labs, creating your own CA is faster and lower cost than obtaining and managing publicly trusted certificates.
 
