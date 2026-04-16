@@ -69,7 +69,7 @@ openssl req -new -x509 -days 3650 -sha256 -key privkey.pem -out ca.pem
 
 When prompted, set a clear CA Common Name (for example, `Lab Root CA`).
 
-In this lab, this first CA certificate is your **root CA** (root Certificate Authority): it signs server certificates directly and becomes the trust anchor you import on clients.
+In this lab, this first CA certificate is your **Root CA** (Root Certificate Authority): it signs server certificates directly and becomes the trust anchor you import on clients.
 
 ### 4) Create CSR config for server identity
 
@@ -139,7 +139,7 @@ Confirm:
 
 ---
 
-## Part 2: Deploy on Amazon EC2 (Apache on Amazon Linux)
+## Part 2: Deploy the Self-Signed TLS Certificate on Amazon EC2 (Apache on Amazon Linux)
 
 ### 1) Open inbound HTTPS in Security Group
 
@@ -155,7 +155,7 @@ For Amazon Linux 2 / Amazon Linux 2023:
 sudo dnf install -y mod_ssl || sudo yum install -y mod_ssl
 ```
 
-### 3) Place certificate files
+### 3) Copy certificate files to the right location on the EC2 instance and set the correct permissions
 
 ```bash
 sudo cp server.crt /etc/pki/tls/certs/server.crt
@@ -246,6 +246,17 @@ You should no longer need `--insecure` when trust is configured correctly.
 
 ## Optional: Force HTTP -> HTTPS Redirect
 
+Important security group requirement:
+
+- Keep inbound `443` open as configured in Part 2, Step 1.
+- Also open inbound `80` (HTTP), otherwise clients cannot reach port 80 to receive the redirect response.
+
+Recommended inbound rules for this optional section:
+
+- HTTPS: TCP `443`
+- HTTP: TCP `80`
+- Source: your test IP (preferred) or `0.0.0.0/0` for broader access
+
 Create `/etc/httpd/conf.d/redirect.conf`:
 
 ```apache
@@ -290,3 +301,7 @@ How production differs:
 - In real-world public deployments, certificates are typically issued by public CAs that are already trusted by browsers.
 - That avoids browser trust warnings for users.
 - For training labs, creating your own CA is faster and lower cost than obtaining and managing publicly trusted certificates.
+
+
+End-of-Lab
+---
