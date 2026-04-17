@@ -5,5 +5,7 @@ extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = your-domain.example.com
-IP.1 = 1.2.3.4
+DNS.1 = ec2-203-0-113-10.compute-1.amazonaws.com
+DNS.2 = localhost
+IP.1 = 203.0.113.10
+IP.2 = 127.0.0.1

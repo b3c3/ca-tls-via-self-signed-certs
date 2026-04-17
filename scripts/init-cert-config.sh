@@ -8,11 +8,9 @@ CSR_TARGET="$ROOT_DIR/server.csr.cnf"
 EXT_TARGET="$ROOT_DIR/server_v3.ext"
 
 CSR_TEMPLATE="$TEMPLATE_DIR/server.csr.cnf.template"
-CSR_EXAMPLE="$TEMPLATE_DIR/server.csr.cnf.example"
 EXT_TEMPLATE="$TEMPLATE_DIR/server_v3.ext.template"
-EXT_EXAMPLE="$TEMPLATE_DIR/server_v3.ext.example"
 
-for required in "$CSR_TEMPLATE" "$CSR_EXAMPLE" "$EXT_TEMPLATE" "$EXT_EXAMPLE"; do
+for required in "$CSR_TEMPLATE" "$EXT_TEMPLATE"; do
   if [[ ! -f "$required" ]]; then
     echo "Missing required template file: $required" >&2
     exit 1
@@ -21,21 +19,9 @@ done
 
 echo "Initialize certificate config files"
 echo "---------------------------------"
-echo "Choose source:"
-echo "  1) Generic placeholders (.template)"
-echo "  2) Pre-filled EC2-style examples (.example)"
-read -r -p "Enter choice [1/2, default 1]: " choice
-choice="${choice:-1}"
-
-if [[ "$choice" == "2" ]]; then
-  cp "$CSR_EXAMPLE" "$CSR_TARGET"
-  cp "$EXT_EXAMPLE" "$EXT_TARGET"
-  echo "Copied example files to:"
-else
-  cp "$CSR_TEMPLATE" "$CSR_TARGET"
-  cp "$EXT_TEMPLATE" "$EXT_TARGET"
-  echo "Copied template files to:"
-fi
+cp "$CSR_TEMPLATE" "$CSR_TARGET"
+cp "$EXT_TEMPLATE" "$EXT_TARGET"
+echo "Copied templates to:"
 
 echo "  - $CSR_TARGET"
 echo "  - $EXT_TARGET"

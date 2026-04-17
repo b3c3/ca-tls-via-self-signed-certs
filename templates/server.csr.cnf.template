@@ -6,9 +6,9 @@ distinguished_name = dn
 
 [dn]
 C = US
-ST = StateName
-L = CityName
-O = OrganizationName
-OU = DepartmentName
-emailAddress = admin@example.com
-CN = your-domain-or-ip
+ST = Virginia
+L = Ashburn
+O = CIL Academy Lab
+OU = Platform Engineering
+emailAddress = team@example.com
+CN = ec2-203-0-113-10.compute-1.amazonaws.com

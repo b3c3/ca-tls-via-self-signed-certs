@@ -31,18 +31,14 @@ Use this for lab and internal environments only. Do not use a private self-signe
 
 ### Recommended Template Workflow
 
-Use one of these options before generating the CSR:
+Copy the bundled templates into the repo root (they ship with sample EC2-style values; replace anything that does not match your server):
 
-- Start from placeholders:
-  - `cp templates/server.csr.cnf.template server.csr.cnf`
-  - `cp templates/server_v3.ext.template server_v3.ext`
-- Start from a pre-filled EC2-style example:
-  - `cp templates/server.csr.cnf.example server.csr.cnf`
-  - `cp templates/server_v3.ext.example server_v3.ext`
+- `cp templates/server.csr.cnf.template server.csr.cnf`
+- `cp templates/server_v3.ext.template server_v3.ext`
 
 Then edit values so `CN` and SAN entries match your real DNS/IP.
 
-If you prefer an interactive setup, run:
+For an interactive setup that copies the templates and walks you through DNS/IP and Subject Alternative Names, run:
 
 ```bash
 ./scripts/init-cert-config.sh
