@@ -12,28 +12,32 @@ EXT_TEMPLATE="$TEMPLATE_DIR/server_v3.ext.template"
 
 for required in "$CSR_TEMPLATE" "$EXT_TEMPLATE"; do
   if [[ ! -f "$required" ]]; then
-    echo "Missing required template file: $required" >&2
+    echo "Missing required TLS certificate configuration template file: $required" >&2
     exit 1
   fi
 done
 
-echo "Initialize certificate config files"
-echo "---------------------------------"
+echo "Initialising TLS certificate config files"
+echo "-----------------------------------------"
 cp "$CSR_TEMPLATE" "$CSR_TARGET"
 cp "$EXT_TEMPLATE" "$EXT_TARGET"
-echo "Copied templates to:"
 
+echo
+echo "TLS Certificate Configuration Files copied to:"
+echo "----------------------------------------------"
 echo "  - $CSR_TARGET"
 echo "  - $EXT_TARGET"
 echo
 
-echo "Distinguished name fields (from template):"
-echo "-------------------------------------------"
+echo "Distinguished Name (DN) Fields (sourced from the template):"
+echo "-----------------------------------------------------------"
+
 grep -E '^C = |^ST = |^L = |^O = |^OU = |^emailAddress = ' "$CSR_TARGET" | while IFS= read -r dn_line; do
   printf '  %s\n' "$dn_line"
 done
+
 echo
-read -r -p "Update any of these fields? [y/N]: " update_dn
+read -r -p "Do you want to update any of these DN fields? [y/N]: " update_dn
 update_dn="$(printf '%s' "${update_dn:-}" | tr '[:upper:]' '[:lower:]')"
 update_dn="${update_dn//[[:space:]]/}"
 
@@ -69,8 +73,8 @@ if [[ "$update_dn" == "y" || "$update_dn" == "yes" ]]; then
   echo
 fi
 
-read -r -p "Primary DNS name (leave empty to skip): " primary_dns
-read -r -p "Primary IP address (leave empty to skip): " primary_ip
+read -r -p "Enter Primary DNS name (leave empty to skip): " primary_dns
+read -r -p "Enter Primary IP address (leave empty to skip): " primary_ip
 
 if [[ -n "${primary_dns}" ]]; then
   sed -i.bak "s|^CN = .*|CN = ${primary_dns}|" "$CSR_TARGET"
@@ -116,7 +120,7 @@ while true; do
       fi
       ;;
     *)
-      echo "Unknown type. Use dns, ip, or none."
+      echo "Unknown type. Use dns, ip, none, or simply press <Enter> to continue."
       ;;
   esac
 done
@@ -138,10 +142,11 @@ rm -f "$CSR_TARGET.bak"
 
 echo
 echo "Done."
-echo "Review and adjust as needed:"
+echo "Review and adjust the options as needed in the following configuration files:"
 echo "  - $CSR_TARGET"
 echo "  - $EXT_TARGET"
+
 echo
-echo "Next steps:"
+echo "Here are your next steps (please refer to the Lab Guide for detailed instructions):"
 echo "  openssl req -new -nodes -out server.csr -keyout server.key -config server.csr.cnf"
 echo "  openssl x509 -req -in server.csr -CA ca.pem -CAkey privkey.pem -CAcreateserial -out server.crt -days 825 -sha256 -extfile server_v3.ext"
