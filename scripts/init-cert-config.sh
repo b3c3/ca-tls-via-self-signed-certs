@@ -27,6 +27,48 @@ echo "  - $CSR_TARGET"
 echo "  - $EXT_TARGET"
 echo
 
+echo "Distinguished name fields (from template):"
+echo "-------------------------------------------"
+grep -E '^C = |^ST = |^L = |^O = |^OU = |^emailAddress = ' "$CSR_TARGET" | while IFS= read -r dn_line; do
+  printf '  %s\n' "$dn_line"
+done
+echo
+read -r -p "Update any of these fields? [y/N]: " update_dn
+update_dn="$(printf '%s' "${update_dn:-}" | tr '[:upper:]' '[:lower:]')"
+update_dn="${update_dn//[[:space:]]/}"
+
+if [[ "$update_dn" == "y" || "$update_dn" == "yes" ]]; then
+  dn_replace_line() {
+    local key="$1"
+    local val="$2"
+    local tmp
+    tmp="$(mktemp)"
+    awk -v k="$key" -v v="$val" '
+      $0 ~ "^" k " = " { print k " = " v; next }
+      { print }
+    ' "$CSR_TARGET" > "$tmp" && mv "$tmp" "$CSR_TARGET"
+  }
+
+  dn_prompt_one() {
+    local key="$1"
+    local current newval trimmed
+    current="$(grep "^${key} = " "$CSR_TARGET" | head -n1 | sed "s/^${key} = //")"
+    read -r -p "${key} [${current}]: " newval || true
+    trimmed="$(printf '%s' "$newval" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    if [[ -n "$trimmed" ]]; then
+      dn_replace_line "$key" "$trimmed"
+    fi
+  }
+
+  dn_prompt_one "C"
+  dn_prompt_one "ST"
+  dn_prompt_one "L"
+  dn_prompt_one "O"
+  dn_prompt_one "OU"
+  dn_prompt_one "emailAddress"
+  echo
+fi
+
 read -r -p "Primary DNS name (leave empty to skip): " primary_dns
 read -r -p "Primary IP address (leave empty to skip): " primary_ip
 

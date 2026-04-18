@@ -38,7 +38,7 @@ Copy the bundled templates into the repo root (they ship with sample EC2-style v
 
 Then edit values so `CN` and SAN entries match your real DNS/IP.
 
-For an interactive setup that copies the templates and walks you through DNS/IP and Subject Alternative Names, run:
+For an interactive setup that copies the templates, shows the distinguished name fields from the CSR template (with an option to update each value), then walks you through DNS/IP and Subject Alternative Names, run:
 
 ```bash
 ./scripts/init-cert-config.sh
