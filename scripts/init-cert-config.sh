@@ -95,7 +95,12 @@ if [[ -n "${primary_ip}" ]]; then
 fi
 
 echo
-echo "Add extra SAN entries. Press Enter when done."
+if [[ -n "${primary_dns}" || -n "${primary_ip}" ]]; then
+  echo "The primary DNS name and/or IP address have been added to the SAN entries section."
+  echo "Feel free to add additional SAN entries if needed. Press Enter when done."
+else
+  echo "Add SAN entries as needed (from the template or new). Press Enter when done."
+fi
 while true; do
   read -r -p "Add SAN type [dns/ip/none]: " san_type
   san_type="$(printf '%s' "$san_type" | tr '[:upper:]' '[:lower:]')"
@@ -150,3 +155,4 @@ echo
 echo "Here are your next steps (please refer to the Lab Guide for detailed instructions):"
 echo "  openssl req -new -nodes -out server.csr -keyout server.key -config server.csr.cnf"
 echo "  openssl x509 -req -in server.csr -CA ca.pem -CAkey privkey.pem -CAcreateserial -out server.crt -days 825 -sha256 -extfile server_v3.ext"
+echo
