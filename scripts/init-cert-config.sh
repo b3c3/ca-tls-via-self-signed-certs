@@ -99,7 +99,7 @@ if [[ -n "${primary_dns}" || -n "${primary_ip}" ]]; then
   echo "The primary DNS name and/or IP address have been added to the SAN entries section."
   echo "Feel free to add additional SAN entries if needed. Press Enter when done."
 else
-  echo "Add SAN entries as needed (from the template or new). Press Enter when done."
+  echo "Optional: add extra DNS or IP SAN entries below, or press Enter to skip and keep the SAN list already in the copied template."
 fi
 while true; do
   read -r -p "Add SAN type [dns/ip/none]: " san_type
