@@ -5,3 +5,6 @@ server_v3.ext
 # Local TLS artifact directories
 server-tls-items/
 root-ca-tls-items/
+
+# Visual Studio Code — multi-root workspace definitions
+*.code-workspace
