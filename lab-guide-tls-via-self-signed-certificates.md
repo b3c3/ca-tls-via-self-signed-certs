@@ -30,14 +30,14 @@ Use this for lab and internal environments only. Do not use a private self-signe
 - Template files available in `templates/`
 
 **File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension** for PEM-encoded keys and certificates (what OpenSSL outputs by default).    
-The table below lists each file and its role; Part 2 also explains how this relates to Apache (httpd).
+The table below lists each file and its role. For how `.pem` and `.crt` relate to Apache `httpd`, see [Dot PEM vs Dot CRT: A Note on Certificate Filename Extensions](#dot-pem-vs-dot-crt-a-note-on-certificate-filename-extensions).
 
-### Files used in this lab (reference)
+### Files used in this lab
 
 | File | Description |
 |------|-------------|
-| `templates/server.csr.cnf.template` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). <br/> - Copy to `server.csr.cnf` and use as the CSR config file. <br/> - Alternatively, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file based on this template. <br/> - **Note:** The CSR config file is used to generate the server's private key and CSR in [Step 5](#5-generate-server-private-key--certificate-signing-request-csr). |
-| `templates/server_v3.ext.template` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server_v3.ext` and use as the extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 7](#7-sign-the-server-certificate-with-your-ca). |
+| `templates/server.csr.cnf.template` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). <br/> - Copy to `server.csr.cnf` and use as the **CSR config file**. <br/> - Alternatively, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file based on this template. <br/> - **Note:** The CSR config file is used to generate the server's private key and CSR in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
+| `templates/server_v3.ext.template` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server_v3.ext` and use as the X.509 extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 8](#8-sign-the-server-certificate-with-your-ca-root-ca-in-our-case). |
 | `server.csr.cnf` | The CSR config OpenSSL reads when generating `server.csr` and `server-private-key.pem`. |
 | `server_v3.ext` | Extension file passed to `openssl x509` when the CA signs the server certificate (SANs must match what clients use in the URL). |
 | `root-ca-private-key.pem` | **Root CA private key.** Signs CSRs; proves CA authority. **Secret** — protect like any signing key. |
@@ -161,6 +161,14 @@ openssl x509 -req \
   -sha256 \
   -extfile server_v3.ext
 ```
+
+- **Note:** For this lab, feel free to choose a different value for `-days` in the command above (for example `365` for one year or `90` for three months).
+
+The example uses **825** days as a teaching default. In **public Web PKI** (TLS certificates that chain to **public** certificate authorities in browser trust stores), industry baselines once allowed long **subscriber** certificate lifetimes; **825 days** is a figure learners still encounter in older documentation from that era (it was never exclusive to “OV” versus other validation types). **Apple** (Safari) began enforcing a **398-day** maximum for **publicly trusted** certificates issued on or after **1 September 2020**; other major browsers adopted similar limits. Those rules govern **public** CAs—**not** the `-days` value on a server certificate signed by **your private lab Root CA** (once a client trusts `root-ca-cert.pem`, browsers do not apply the same public maximum to your lab cert’s lifetime). Even so, the same motivations for shorter validity still apply in principle:
+
+1. **Minimising compromise exposure:** a shorter lifespan limits how long a stolen or mis-issued certificate can be abused.
+2. **Improving crypto agility:** shorter lifetimes make it easier to retire weak algorithms (for example older hash or key types) across the fleet.
+3. **Promoting automation:** shorter renewal cycles encourage ACME, managed PKI, or other automated issuance (for example Let’s Encrypt in the public ecosystem).
 
 ### 9) Verify the Issued Certificate
 
