@@ -168,11 +168,13 @@ openssl x509 -req \
 openssl x509 -in server-cert.pem -noout -text
 ```
 
-Confirm:
+Confirm the following:
 
 - `Issuer` is your CA.
 - `X509v3 Subject Alternative Name` includes the correct DNS/IP.
 - `Basic Constraints: CA:FALSE`.
+
+**Note:** `CA:FALSE` means **Basic Constraints** marks this as a **leaf (end-entity)** certificate: it must not be used to issue other certificates. In this lab, that leaf cert is your **TLS server** (HTTPS endpoint). `CA:TRUE` appears on **CA certificates** (Root or Intermediate) that **sign** other certs in the chain—the flag means “may act as a CA,” not that the cert is “for securing the CA” as a web server.
 
 ---
 
