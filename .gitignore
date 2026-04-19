@@ -2,6 +2,14 @@
 server.csr.cnf
 server_v3.ext
 
+# OpenSSL lab outputs (keys, CSRs, certs, CA serial)
+server.csr
+root-ca-private-key.pem
+root-ca-cert.pem
+root-ca-cert.srl
+server-private-key.pem
+server-cert.crt
+
 # Local TLS artifact directories
 server-tls-items/
 root-ca-tls-items/

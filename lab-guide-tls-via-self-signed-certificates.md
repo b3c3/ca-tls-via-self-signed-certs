@@ -29,6 +29,8 @@ Use this for lab and internal environments only. Do not use a private self-signe
 - A hostname/IP you will actually use to access the server (must match SAN)
 - Template files available in `templates/`
 
+**File naming in this lab (descriptive kebab-case):** the Root CA private key is `root-ca-private-key.pem`; the Root CA certificate (trust anchor) is `root-ca-cert.pem`; the server’s private key is `server-private-key.pem`; the issued server certificate is `server-cert.crt`. The first time you sign a server cert, OpenSSL may create `root-ca-cert.srl` (serial number file for the CA).
+
 ### Recommended Template Workflow
 
 Copy the bundled templates into the repo root (they ship with sample EC2-style values; replace anything that does not match your server):
@@ -53,14 +55,14 @@ openssl version -a
 ### 2) Create the CA private key
 
 ```bash
-openssl genrsa -out privkey.pem 2048
-chmod 600 privkey.pem
+openssl genrsa -out root-ca-private-key.pem 2048
+chmod 600 root-ca-private-key.pem
 ```
 
 ### 3) Create the CA certificate
 
 ```bash
-openssl req -new -x509 -days 3650 -sha256 -key privkey.pem -out ca.pem
+openssl req -new -x509 -days 3650 -sha256 -key root-ca-private-key.pem -out root-ca-cert.pem
 ```
 
 When prompted, set a clear CA Common Name (for example, `Lab Root CA`).
@@ -93,8 +95,8 @@ Replace `your-domain-or-ip` with your real DNS name or IP.
 ### 5) Generate server key + CSR
 
 ```bash
-openssl req -new -nodes -out server.csr -keyout server.key -config server.csr.cnf
-chmod 600 server.key
+openssl req -new -nodes -out server.csr -keyout server-private-key.pem -config server.csr.cnf
+chmod 600 server-private-key.pem
 ```
 
 ### 6) Create certificate extensions (SAN)
@@ -118,13 +120,13 @@ Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n
 ### 7) Sign the server certificate with your CA
 
 ```bash
-openssl x509 -req -in server.csr -CA ca.pem -CAkey privkey.pem -CAcreateserial -out server.crt -days 825 -sha256 -extfile server_v3.ext
+openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.crt -days 825 -sha256 -extfile server_v3.ext
 ```
 
 ### 8) Verify the issued certificate
 
 ```bash
-openssl x509 -in server.crt -noout -text
+openssl x509 -in server-cert.crt -noout -text
 ```
 
 Confirm:
@@ -154,10 +156,10 @@ sudo dnf install -y mod_ssl || sudo yum install -y mod_ssl
 ### 3) Copy certificate files to the right location on the EC2 instance and set the correct permissions
 
 ```bash
-sudo cp server.crt /etc/pki/tls/certs/server.crt
-sudo cp server.key /etc/pki/tls/private/server.key
-sudo chown root:root /etc/pki/tls/private/server.key
-sudo chmod 600 /etc/pki/tls/private/server.key
+sudo cp server-cert.crt /etc/pki/tls/certs/server-cert.crt
+sudo cp server-private-key.pem /etc/pki/tls/private/server-private-key.pem
+sudo chown root:root /etc/pki/tls/private/server-private-key.pem
+sudo chmod 600 /etc/pki/tls/private/server-private-key.pem
 ```
 
 ### 4) Configure Apache TLS settings
@@ -171,8 +173,8 @@ sudo nano /etc/httpd/conf.d/ssl.conf
 Set:
 
 ```apache
-SSLCertificateFile /etc/pki/tls/certs/server.crt
-SSLCertificateKeyFile /etc/pki/tls/private/server.key
+SSLCertificateFile /etc/pki/tls/certs/server-cert.crt
+SSLCertificateKeyFile /etc/pki/tls/private/server-private-key.pem
 ```
 
 ### 5) Validate and restart Apache
@@ -189,7 +191,7 @@ sudo systemctl status httpd --no-pager
 curl -vI --insecure https://localhost
 ```
 
-At this stage, browser warnings or `curl` trust warnings are expected because your CA certificate (`ca.pem`) is not trusted on client machines yet.
+At this stage, browser warnings or `curl` trust warnings are expected because your Root CA certificate (`root-ca-cert.pem`) is not trusted on client machines yet.
 
 `--insecure` is used here to confirm TLS is working before client trust is configured.
 
@@ -204,21 +206,21 @@ Now return to trust setup and remove the warnings.
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates
-sudo cp ca.pem /usr/local/share/ca-certificates/my_private_ca.crt
+sudo cp root-ca-cert.pem /usr/local/share/ca-certificates/my_private_ca.crt
 sudo update-ca-certificates
 ```
 
 ### Amazon Linux / RHEL / CentOS
 
 ```bash
-sudo cp ca.pem /etc/pki/ca-trust/source/anchors/my_private_ca.crt
+sudo cp root-ca-cert.pem /etc/pki/ca-trust/source/anchors/my_private_ca.crt
 sudo update-ca-trust extract
 ```
 
 ### Windows (PowerShell as Administrator)
 
 ```powershell
-certutil.exe -addstore Root ca.pem
+certutil.exe -addstore Root root-ca-cert.pem
 ```
 
 ### Firefox
@@ -228,12 +230,12 @@ Firefox may use its own trust store:
 1. `Settings` -> `Privacy & Security`
 2. `Certificates` -> `View Certificates`
 3. `Authorities` -> `Import`
-4. Select `ca.pem`, then enable trust for websites
+4. Select `root-ca-cert.pem`, then enable trust for websites
 
 After trust import, test again:
 
 ```bash
-curl -vI https://localhost --cacert ca.pem
+curl -vI https://localhost --cacert root-ca-cert.pem
 ```
 
 You should no longer need `--insecure` when trust is configured correctly.
@@ -276,9 +278,9 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header.
 
 ## Final Checklist
 
-- Keep private files secret: `privkey.pem` and `server.key`.
-- Share only public files: `ca.pem` (for trust) and `server.crt` (server cert).
-- If hostname/IP changes, reissue `server.crt` with updated SAN.
+- Keep private files secret: `root-ca-private-key.pem` and `server-private-key.pem`.
+- Share only public files: `root-ca-cert.pem` (for trust) and `server-cert.crt` (server certificate).
+- If hostname/IP changes, reissue `server-cert.crt` with updated SAN.
 - If CA private key is compromised, revoke trust and rebuild everything.
 
 ---
