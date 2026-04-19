@@ -5,7 +5,7 @@
 - Owner: CIL Academy
 - Contact: [team@cil.acdemy](mailto:team@cil.acdemy)
 - Classification: Internal
-- Version: v16Apr2026T0849BST
+- Version: v17Apr2026T1200BST
 
 ## Purpose
 
@@ -218,6 +218,8 @@ At this stage, browser warnings or `curl` trust warnings are expected because yo
 
 Now return to trust setup and remove the warnings.
 
+Some steps below copy `root-ca-cert.pem` into a system trust directory where the **destination filename** may end in `.crt` (for example `my_private_ca.crt`). That matches how those distributions expect trust anchors to be installed; the **content** is still the same PEM-encoded CA certificate as `root-ca-cert.pem`.
+
 ### Linux (Ubuntu / Debian)
 
 ```bash
@@ -295,6 +297,7 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header.
 
 ## Final Checklist
 
+- Use the **Files used in this lab (reference)** table in Part 1 if you need a quick reminder of what each file is for.
 - Keep private files secret: `root-ca-private-key.pem` and `server-private-key.pem`.
 - Share only public files: `root-ca-cert.pem` (for trust) and `server-cert.pem` (server certificate).
 - If hostname/IP changes, reissue `server-cert.pem` with updated SAN.
