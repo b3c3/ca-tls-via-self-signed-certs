@@ -164,10 +164,13 @@ openssl x509 -req \
 
 - **Note:** You may use any `-days` value you like for this lab (for example `365` for one year or `90` for three months).
 
-The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers have pushed toward shorter **public** certs—often around **398 days** maximum—while your **lab** server cert is signed by **your private Root CA**, so you are not limited by those public rules here. When you work on real **public** sites later, shorter certificate lifetimes help because:
+The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers have pushed toward **shorter maximum lifetimes** for **public** certificates—often around **398 days**.   
 
-1. **Less time at risk if a cert is stolen or mis-issued** (smaller window for abuse).
-2. **Faster rollout of stronger algorithms** when the industry deprecates older ones.
+In this lab, your server certificate is signed by **your private Root CA** (not by a **public** CA), so limits on **public** certificate lifetimes do not apply to your `-days` choice here.    
+However, when you work on real **public** sites later, shorter certificate lifetimes help because:
+
+1. **Less time at risk if a certificate is stolen or mis-issued** (smaller window for abuse).
+2. **Faster rollout of stronger algorithms** when the industry deprecates older ones (e.g., SHA-1).
 3. **Easier renewal at scale** when teams automate with ACME, managed PKI, or similar tools (for example Let’s Encrypt).
 
 ### 9) Verify the Issued Certificate
