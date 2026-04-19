@@ -162,13 +162,13 @@ openssl x509 -req \
   -extfile server_v3.ext
 ```
 
-- **Note:** For this lab, feel free to choose a different value for `-days` in the command above (for example `365` for one year or `90` for three months).
+- **Note:** You may use any `-days` value you like for this lab (for example `365` for one year or `90` for three months).
 
-The example uses **825** days as a teaching default. In **public Web PKI** (TLS certificates that chain to **public** certificate authorities in browser trust stores), industry baselines once allowed long **subscriber** certificate lifetimes; **825 days** is a figure learners still encounter in older documentation from that era (it was never exclusive to “OV” versus other validation types). **Apple** (Safari) began enforcing a **398-day** maximum for **publicly trusted** certificates issued on or after **1 September 2020**; other major browsers adopted similar limits. Those rules govern **public** CAs—**not** the `-days` value on a server certificate signed by **your private lab Root CA** (once a client trusts `root-ca-cert.pem`, browsers do not apply the same public maximum to your lab cert’s lifetime). Even so, the same motivations for shorter validity still apply in principle:
+The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers have pushed toward shorter **public** certs—often around **398 days** maximum—while your **lab** server cert is signed by **your private Root CA**, so you are not limited by those public rules here. When you work on real **public** sites later, shorter certificate lifetimes help because:
 
-1. **Minimising compromise exposure:** a shorter lifespan limits how long a stolen or mis-issued certificate can be abused.
-2. **Improving crypto agility:** shorter lifetimes make it easier to retire weak algorithms (for example older hash or key types) across the fleet.
-3. **Promoting automation:** shorter renewal cycles encourage ACME, managed PKI, or other automated issuance (for example Let’s Encrypt in the public ecosystem).
+1. **Less time at risk if a cert is stolen or mis-issued** (smaller window for abuse).
+2. **Faster rollout of stronger algorithms** when the industry deprecates older ones.
+3. **Easier renewal at scale** when teams automate with ACME, managed PKI, or similar tools (for example Let’s Encrypt).
 
 ### 9) Verify the Issued Certificate
 
