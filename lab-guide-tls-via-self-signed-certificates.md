@@ -29,7 +29,7 @@ Use this for lab and internal environments only. Do not use a private self-signe
 - A hostname/IP you will actually use to access the server (must match SAN)
 - Template files available in `templates/`
 
-**File naming in this lab (descriptive kebab-case):** the Root CA private key is `root-ca-private-key.pem`; the Root CA certificate (trust anchor) is `root-ca-cert.pem`; the server’s private key is `server-private-key.pem`; the issued server certificate is `server-cert.crt`. The first time you sign a server cert, OpenSSL may create `root-ca-cert.srl` (serial number file for the CA).
+**File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension for PEM-encoded** keys and certificates (what OpenSSL emits by default and what Apache `SSLCertificateFile` / `SSLCertificateKeyFile` expect as PEM). The Root CA private key is `root-ca-private-key.pem`; the Root CA certificate (trust anchor) is `root-ca-cert.pem`; the server’s private key is `server-private-key.pem`; the issued server certificate is `server-cert.pem`. The first time you sign a server cert, OpenSSL may create `root-ca-cert.srl` (serial number file for the CA).
 
 ### Recommended Template Workflow
 
@@ -120,13 +120,13 @@ Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n
 ### 7) Sign the server certificate with your CA
 
 ```bash
-openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.crt -days 825 -sha256 -extfile server_v3.ext
+openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.pem -days 825 -sha256 -extfile server_v3.ext
 ```
 
 ### 8) Verify the issued certificate
 
 ```bash
-openssl x509 -in server-cert.crt -noout -text
+openssl x509 -in server-cert.pem -noout -text
 ```
 
 Confirm:
@@ -156,7 +156,7 @@ sudo dnf install -y mod_ssl || sudo yum install -y mod_ssl
 ### 3) Copy certificate files to the right location on the EC2 instance and set the correct permissions
 
 ```bash
-sudo cp server-cert.crt /etc/pki/tls/certs/server-cert.crt
+sudo cp server-cert.pem /etc/pki/tls/certs/server-cert.pem
 sudo cp server-private-key.pem /etc/pki/tls/private/server-private-key.pem
 sudo chown root:root /etc/pki/tls/private/server-private-key.pem
 sudo chmod 600 /etc/pki/tls/private/server-private-key.pem
@@ -173,7 +173,7 @@ sudo nano /etc/httpd/conf.d/ssl.conf
 Set:
 
 ```apache
-SSLCertificateFile /etc/pki/tls/certs/server-cert.crt
+SSLCertificateFile /etc/pki/tls/certs/server-cert.pem
 SSLCertificateKeyFile /etc/pki/tls/private/server-private-key.pem
 ```
 
@@ -279,8 +279,8 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header.
 ## Final Checklist
 
 - Keep private files secret: `root-ca-private-key.pem` and `server-private-key.pem`.
-- Share only public files: `root-ca-cert.pem` (for trust) and `server-cert.crt` (server certificate).
-- If hostname/IP changes, reissue `server-cert.crt` with updated SAN.
+- Share only public files: `root-ca-cert.pem` (for trust) and `server-cert.pem` (server certificate).
+- If hostname/IP changes, reissue `server-cert.pem` with updated SAN.
 - If CA private key is compromised, revoke trust and rebuild everything.
 
 ---

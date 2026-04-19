@@ -8,7 +8,7 @@ root-ca-private-key.pem
 root-ca-cert.pem
 root-ca-cert.srl
 server-private-key.pem
-server-cert.crt
+server-cert.pem
 
 # Local TLS artifact directories
 server-tls-items/

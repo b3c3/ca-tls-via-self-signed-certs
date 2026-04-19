@@ -154,5 +154,5 @@ echo "  - $EXT_TARGET"
 echo
 echo "Here are your next steps (please refer to the Lab Guide for detailed instructions):"
 echo "  openssl req -new -nodes -out server.csr -keyout server-private-key.pem -config server.csr.cnf"
-echo "  openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.crt -days 825 -sha256 -extfile server_v3.ext"
+echo "  openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.pem -days 825 -sha256 -extfile server_v3.ext"
 echo
