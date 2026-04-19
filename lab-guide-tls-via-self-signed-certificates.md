@@ -29,7 +29,22 @@ Use this for lab and internal environments only. Do not use a private self-signe
 - A hostname/IP you will actually use to access the server (must match SAN)
 - Template files available in `templates/`
 
-**File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension for PEM-encoded** keys and certificates (what OpenSSL emits by default and what Apache `SSLCertificateFile` / `SSLCertificateKeyFile` expect as PEM). The Root CA private key is `root-ca-private-key.pem`; the Root CA certificate (trust anchor) is `root-ca-cert.pem`; the server’s private key is `server-private-key.pem`; the issued server certificate is `server-cert.pem`. The first time you sign a server cert, OpenSSL may create `root-ca-cert.srl` (serial number file for the CA).
+**File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension** for PEM-encoded keys and certificates (what OpenSSL emits by default). The table below lists each file and its role; Part 2 also explains how this relates to Apache.
+
+### Files used in this lab (reference)
+
+| File | Description |
+|------|-------------|
+| `templates/server.csr.cnf.template` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). Copy to `server.csr.cnf` at the repo root (or use the init script). |
+| `templates/server_v3.ext.template` | Source template for **X.509 extensions** (SAN, key usage, etc.). Copy to `server_v3.ext`. |
+| `server.csr.cnf` | Active CSR config OpenSSL reads when generating `server.csr` and `server-private-key.pem`. |
+| `server_v3.ext` | Extension file passed to `openssl x509` when the CA signs the server certificate (SANs must match what clients use in the URL). |
+| `root-ca-private-key.pem` | **Root CA private key.** Signs CSRs; proves CA authority. **Secret** — protect like any signing key. |
+| `root-ca-cert.pem` | **Root CA certificate** (public). Your trust anchor; safe to copy to clients so they trust certificates issued by this CA. |
+| `root-ca-cert.srl` | **CA serial number file** OpenSSL uses when signing (may appear after the first `x509 -req` sign). Tracks issued serials for this CA. |
+| `server.csr` | **Certificate Signing Request** (PEM). Contains the server’s public key and subject; intermediate artifact for the signing step. |
+| `server-private-key.pem` | **Server TLS private key** for the endpoint (e.g. Apache). **Secret** — restrict permissions (`600`). |
+| `server-cert.pem` | **Server (leaf) certificate** (PEM), signed by the Root CA. Public; referenced by Apache `SSLCertificateFile`. |
 
 ### Recommended Template Workflow
 
@@ -176,6 +191,8 @@ Set:
 SSLCertificateFile /etc/pki/tls/certs/server-cert.pem
 SSLCertificateKeyFile /etc/pki/tls/private/server-private-key.pem
 ```
+
+**Knowledge (PEM content vs filename extension):** What matters for Apache on Amazon Linux is the **file content** — PEM text that begins with lines such as `-----BEGIN CERTIFICATE-----` or `-----BEGIN PRIVATE KEY-----` — not whether the filename ends in `.crt` or `.pem`. Both extensions are used in the wild; **httpd** will serve TLS correctly with either as long as you point `SSLCertificateFile` at a PEM-encoded certificate and `SSLCertificateKeyFile` at the matching PEM-encoded private key. This lab standardizes on `.pem` for consistency with OpenSSL defaults and the Root CA filenames above.
 
 ### 5) Validate and restart Apache
 
