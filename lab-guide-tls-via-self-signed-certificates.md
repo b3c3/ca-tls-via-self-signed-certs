@@ -29,37 +29,26 @@ Use this for lab and internal environments only. Do not use a private self-signe
 - A hostname/IP you will actually use to access the server (must match SAN)
 - Template files available in `templates/`
 
-**File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension** for PEM-encoded keys and certificates (what OpenSSL emits by default). The table below lists each file and its role; Part 2 also explains how this relates to Apache.
+**File naming in this lab:** use descriptive **kebab-case** names and the **`.pem` extension** for PEM-encoded keys and certificates (what OpenSSL outputs by default).    
+The table below lists each file and its role; Part 2 also explains how this relates to Apache (httpd).
 
 ### Files used in this lab (reference)
 
 | File | Description |
 |------|-------------|
-| `templates/server.csr.cnf.template` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). Copy to `server.csr.cnf` at the repo root (or use the init script). |
-| `templates/server_v3.ext.template` | Source template for **X.509 extensions** (SAN, key usage, etc.). Copy to `server_v3.ext`. |
-| `server.csr.cnf` | Active CSR config OpenSSL reads when generating `server.csr` and `server-private-key.pem`. |
+| `templates/server.csr.cnf.template` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). <br/> - Copy to `server.csr.cnf` and use as the CSR config file. <br/> - Alternatively, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file based on this template. <br/> - **Note:** The CSR config file is used to generate the server's private key and CSR in [Step 5](#5-generate-server-private-key--certificate-signing-request-csr). |
+| `templates/server_v3.ext.template` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server_v3.ext` and use as the extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 7](#7-sign-the-server-certificate-with-your-ca). |
+| `server.csr.cnf` | The CSR config OpenSSL reads when generating `server.csr` and `server-private-key.pem`. |
 | `server_v3.ext` | Extension file passed to `openssl x509` when the CA signs the server certificate (SANs must match what clients use in the URL). |
 | `root-ca-private-key.pem` | **Root CA private key.** Signs CSRs; proves CA authority. **Secret** — protect like any signing key. |
 | `root-ca-cert.pem` | **Root CA certificate** (public). Your trust anchor; safe to copy to clients so they trust certificates issued by this CA. |
 | `root-ca-cert.srl` | **CA serial number file** OpenSSL uses when signing (may appear after the first `x509 -req` sign). Tracks issued serials for this CA. |
 | `server.csr` | **Certificate Signing Request** (PEM). Contains the server’s public key and subject; intermediate artifact for the signing step. |
-| `server-private-key.pem` | **Server TLS private key** for the endpoint (e.g. Apache). **Secret** — restrict permissions (`600`). |
+| `server-private-key.pem` | **Server TLS private key** for the endpoint (e.g. Apache httpd). **Secret** — restrict permissions (`600`). |
 | `server-cert.pem` | **Server (leaf) certificate** (PEM), signed by the Root CA. Public; referenced by Apache `SSLCertificateFile`. |
 
 ### Recommended Template Workflow
-
-Copy the bundled templates into the repo root (they ship with sample EC2-style values; replace anything that does not match your server):
-
-- `cp templates/server.csr.cnf.template server.csr.cnf`
-- `cp templates/server_v3.ext.template server_v3.ext`
-
-Then edit values so `CN` and SAN entries match your real DNS/IP.
-
-For an interactive setup that copies the templates, shows the distinguished name fields from the CSR template (with an option to update each value), then walks you through DNS/IP and Subject Alternative Names, run:
-
-```bash
-./scripts/init-cert-config.sh
-```
+The following steps will guide you through the process of generating the Root CA and Server certificates.
 
 ### 1) Check OpenSSL
 
@@ -71,6 +60,11 @@ openssl version -a
 
 ```bash
 openssl genrsa -out root-ca-private-key.pem 2048
+```
+
+Restrict the CA private key permissions to 600. This makes the file private so that only the owner can read and write to it.
+
+```bash
 chmod 600 root-ca-private-key.pem
 ```
 
@@ -84,9 +78,23 @@ When prompted, set a clear CA Common Name (for example, `Lab Root CA`).
 
 In this lab, this first CA certificate is your **Root CA** (Root Certificate Authority): it signs server certificates directly and becomes the trust anchor you import on clients.
 
-### 4) Create CSR config for server identity
+### 4) Create the Configuration Files required for the Server Certificate
+Copy the bundled templates to the repo root or a folder of your choice (they come with sample EC2-style values; replace anything that does not match your server):
 
-Create or edit `server.csr.cnf`:
+- `cp templates/server.csr.cnf.template server.csr.cnf`
+- `cp templates/server_v3.ext.template server_v3.ext`
+
+Then edit values so `CN` and SAN entries match your real DNS/IP.
+
+Alternatively, instead of a manual copy + paste + edit, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file and extension config file based on the templates as described in the table above. This script provides an interactive approach that copies the templates, shows the distinguished name fields from the CSR template (with an option to update each value), then walks you through steps to add DNS/IP and Subject Alternative Names:
+
+```bash
+./scripts/init-cert-config.sh
+```
+
+### 5) Create CSR config for server identity
+
+Review the `server.csr.cnf` file created in the previous step to ensure the values are set correctly:
 
 ```ini
 [req]
@@ -107,16 +115,24 @@ CN = your-domain-or-ip
 
 Replace `your-domain-or-ip` with your real DNS name or IP.
 
-### 5) Generate server key + CSR
+### 6) Generate Server Private Key and Certificate Signing Request (CSR)
 
 ```bash
 openssl req -new -nodes -out server.csr -keyout server-private-key.pem -config server.csr.cnf
+```
+
+Restrict the server private key permissions to 600. This makes the file private so that only the owner can read and write to it.
+
+```bash
 chmod 600 server-private-key.pem
 ```
 
-### 6) Create certificate extensions (SAN)
+### 7) Create or Review Server Certificate Extensions (SAN) Configuration File
 
-Create or edit `server_v3.ext`:
+Certificate extensions are additional data fields that define extra features or constraints for a certificate, such as the Subject Alternative Name (SAN) for securing multiple domains.    
+For more information, you can explore the technical documentation on certificate configurations online (https://docs.openssl.org/3.6/man5/x509v3_config/#subject-alternative-name).    
+
+Create or review the `server_v3.ext` file created in Step 4 to ensure the values are set correctly:
 
 ```ini
 authorityKeyIdentifier=keyid,issuer
@@ -132,13 +148,21 @@ IP.1 = 1.2.3.4
 
 Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n` entries as needed.
 
-### 7) Sign the server certificate with your CA
+### 8) Sign the server certificate with your CA (Root CA in our case)
 
 ```bash
-openssl x509 -req -in server.csr -CA root-ca-cert.pem -CAkey root-ca-private-key.pem -CAcreateserial -out server-cert.pem -days 825 -sha256 -extfile server_v3.ext
+openssl x509 -req \
+  -in server.csr \
+  -CA root-ca-cert.pem \
+  -CAkey root-ca-private-key.pem \
+  -CAcreateserial \
+  -out server-cert.pem \
+  -days 825 \
+  -sha256 \
+  -extfile server_v3.ext
 ```
 
-### 8) Verify the issued certificate
+### 9) Verify the issued certificate
 
 ```bash
 openssl x509 -in server-cert.pem -noout -text
