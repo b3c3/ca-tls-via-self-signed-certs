@@ -56,7 +56,7 @@ The following steps will guide you through the process of generating the Root CA
 openssl version -a
 ```
 
-### 2) Create the CA private key
+### 2) Create the CA Private Key
 
 ```bash
 openssl genrsa -out root-ca-private-key.pem 2048
@@ -68,7 +68,7 @@ Restrict the CA private key permissions to 600. This makes the file private so t
 chmod 600 root-ca-private-key.pem
 ```
 
-### 3) Create the CA certificate
+### 3) Create the CA Certificate
 
 ```bash
 openssl req -new -x509 -days 3650 -sha256 -key root-ca-private-key.pem -out root-ca-cert.pem
@@ -92,7 +92,7 @@ Alternatively, instead of a manual copy + paste + edit, you can use the `scripts
 ./scripts/init-cert-config.sh
 ```
 
-### 5) Create CSR config for server identity
+### 5) Create CSR Configuration for Server Identity
 
 Review the `server.csr.cnf` file created in the previous step to ensure the values are set correctly:
 
@@ -115,7 +115,7 @@ CN = your-domain-or-ip
 
 Replace `your-domain-or-ip` with your real DNS name or IP.
 
-### 6) Generate Server Private Key and Certificate Signing Request (CSR)
+### 6) Generate the Server Private Key and Certificate Signing Request (CSR)
 
 ```bash
 openssl req -new -nodes -out server.csr -keyout server-private-key.pem -config server.csr.cnf
@@ -148,7 +148,7 @@ IP.1 = 1.2.3.4
 
 Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n` entries as needed.
 
-### 8) Sign the server certificate with your CA (Root CA in our case)
+### 8) Sign the Server Certificate with your CA (Root CA in our case)
 
 ```bash
 openssl x509 -req \
@@ -162,7 +162,7 @@ openssl x509 -req \
   -extfile server_v3.ext
 ```
 
-### 9) Verify the issued certificate
+### 9) Verify the Issued Certificate
 
 ```bash
 openssl x509 -in server-cert.pem -noout -text
@@ -174,7 +174,9 @@ Confirm the following:
 - `X509v3 Subject Alternative Name` includes the correct DNS/IP.
 - `Basic Constraints: CA:FALSE`.
 
-**Note:** `CA:FALSE` means **Basic Constraints** marks this as a **leaf (end-entity)** certificate: it must not be used to issue other certificates. In this lab, that leaf cert is your **TLS server** (HTTPS endpoint). `CA:TRUE` appears on **CA certificates** (Root or Intermediate) that **sign** other certs in the chain—the flag means “may act as a CA,” not that the cert is “for securing the CA” as a web server.
+**Note:** `CA:FALSE` means **Basic Constraints** marks this as a **leaf (end-entity)** certificate: it must NOT be used to issue other certificates.
+- In this lab, this leaf certificate is used to secure your **TLS server** (HTTPS endpoint) which is the **end-entity**.
+- In contrast, `CA:TRUE` usually appears on **CA certificates** (Root or Intermediate) that **sign** other certificates in the chain.
 
 ---
 
@@ -194,7 +196,7 @@ For Amazon Linux 2 / Amazon Linux 2023:
 sudo dnf install -y mod_ssl || sudo yum install -y mod_ssl
 ```
 
-### 3) Copy certificate files to the right location on the EC2 instance and set the correct permissions
+### 3) Copy Certificate Files to the Right Locations on the EC2 Instance and Set the Correct Permissions
 
 ```bash
 sudo cp server-cert.pem /etc/pki/tls/certs/server-cert.pem
@@ -203,7 +205,7 @@ sudo chown root:root /etc/pki/tls/private/server-private-key.pem
 sudo chmod 600 /etc/pki/tls/private/server-private-key.pem
 ```
 
-### 4) Configure Apache TLS settings
+### 4) Configure Apache TLS Settings
 
 Edit:
 
@@ -218,9 +220,7 @@ SSLCertificateFile /etc/pki/tls/certs/server-cert.pem
 SSLCertificateKeyFile /etc/pki/tls/private/server-private-key.pem
 ```
 
-**Knowledge (PEM content vs filename extension):** What matters for Apache on Amazon Linux is the **file content** — PEM text that begins with lines such as `-----BEGIN CERTIFICATE-----` or `-----BEGIN PRIVATE KEY-----` — not whether the filename ends in `.crt` or `.pem`. Both extensions are used in the wild; **httpd** will serve TLS correctly with either as long as you point `SSLCertificateFile` at a PEM-encoded certificate and `SSLCertificateKeyFile` at the matching PEM-encoded private key. This lab standardizes on `.pem` for consistency with OpenSSL defaults and the Root CA filenames above.
-
-### 5) Validate and restart Apache
+### 5) Validate and Restart Apache
 
 ```bash
 sudo apachectl configtest
@@ -328,6 +328,16 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header.
 - Share only public files: `root-ca-cert.pem` (for trust) and `server-cert.pem` (server certificate).
 - If hostname/IP changes, reissue `server-cert.pem` with updated SAN.
 - If CA private key is compromised, revoke trust and rebuild everything.
+
+
+## Dot PEM vs Dot CRT: A Note on Certificate Filename Extensions
+
+In this lab, we use `.pem` for all certificate and key files. However, you may see `.crt` used elsewhere. Both extensions are actually used in the wild.
+
+- What matters for Apache on Amazon Linux (and most other web servers) is the **file content** not whether the filename ends in `.crt` or `.pem`
+- The server expects PEM-formatted text, which is easily identified by headers such as `-----BEGIN CERTIFICATE-----` or `-----BEGIN PRIVATE KEY-----`
+- Apache **httpd** will serve TLS correctly with either as long as you point `SSLCertificateFile` at a PEM-encoded certificate and `SSLCertificateKeyFile` at the matching PEM-encoded private key.
+- This lab standardizes on `.pem` for consistency with OpenSSL defaults and the Root CA filenames.
 
 ---
 
