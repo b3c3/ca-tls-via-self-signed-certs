@@ -311,11 +311,29 @@ Recommended inbound rules for this optional section:
 - HTTP: TCP `80`
 - Source: your test IP (preferred) or `0.0.0.0/0` for broader access
 
-Create `/etc/httpd/conf.d/redirect.conf`:
+Create the **REDIRECT** vhost configuration file: `/etc/httpd/conf.d/redirect.conf`:
 
-**Why `ServerAlias`:** `ServerName` is the main host Apache matches for this vhost. If you only set that to your DNS name, a client that opens `http://<public-ip>/` may **not** match this vhost, so **no redirect** occurs. Add **`ServerAlias`** with your instance’s **public IPv4** (and any other names clients use) so both **DNS** and **IP** HTTP requests hit the same redirect.
+```apache
+<VirtualHost *:80>
+    ServerName <your-domain-or-ip>
+    ServerAlias <your-public-ip>
+    Redirect permanent / https://<your-domain-or-ip>/
+</VirtualHost>
+```
 
-Use your real DNS name and public IP (example shape):
+**Why `ServerAlias`?** <br/>
+`ServerName` is the main host Apache matches for this **vhost** (Virtual Host). <br/>If you only set that to your DNS name, a client that opens `http://<public-ip>/` may **not** match this vhost, so **no redirect** occurs. <br/>You need to add **`ServerAlias`** with your EC2 instance’s **public IPv4 address** (and any other IPs/DNS names clients use to access the server, separated by spaces) so both **DNS** and **IP** HTTP requests hit the same redirect.
+
+You can put **several** DNS names or IPs on one `ServerAlias` line (space-separated). Example (adjust or split across multiple `ServerAlias` lines if you prefer):
+
+```apache
+    # Inside the same <VirtualHost *:80> … </VirtualHost> block:
+    ServerAlias 34.204.91.3 10.0.0.50 api.example.com
+```
+
+Use only hostnames or addresses clients **actually** use to reach this server (for a typical public EC2 test, the **public DNS** and **public IPv4** are enough).
+
+An example is shown below using a DNS name and a public IP address as `ServerName` and `ServerAlias` respectively:
 
 ```apache
 <VirtualHost *:80>
@@ -325,9 +343,10 @@ Use your real DNS name and public IP (example shape):
 </VirtualHost>
 ```
 
-Point **`Redirect`** at a URL whose hostname appears in your **server certificate SAN** (usually the DNS name). Replace the example values with your EC2 hostname and IP.
+- Ensure the **`Redirect`** line points to a URL whose hostname appears in your **Server Certificate Subject Alternative Name (SAN)** (usually the DNS name).
+- Replace the example values above with your EC2 hostname (Public DNS) and IP (Public IPv4 address).
 
-Apply:
+Apply the changes and test the redirect:
 
 ```bash
 sudo apachectl configtest

@@ -1,0 +1,155 @@
+<!-- This is a simple HTML file that displays the status of the Apache Server on the EC2 instance. -->
+<!-- Copy to /var/www/html/index.html on the EC2 instance. -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apache Server on EC2 - Status</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            width: 480px;
+            max-width: calc(100vw - 48px);
+            box-sizing: border-box;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        .label {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        #clock {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2.5rem;
+            color: #fff;
+            margin-bottom: 25px;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        h1 {
+            color: #00d4ff;
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin: 20px 0;
+            border-top: 1px solid #333;
+            padding-top: 30px;
+        }
+
+        .ip-box {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 1px dashed #444;
+            transition: all 0.3s ease;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .ip-box:hover {
+            border-color: #00d4ff;
+            background: #222;
+            color: #00d4ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 25px;
+            letter-spacing: 1px;
+        }
+
+        .secure {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        .insecure {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            border: 1px solid #f44336;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding: 10px 0;
+            font-size: 0.75rem;
+            color: #666;
+            border-top: 1px solid #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="label">Your Current Time</div>
+        <div id="clock">00:00:00</div>
+
+        <h1>● STATUS: Apache (httpd) Web Server Active</h1>
+
+        <div class="label">Public IPv4 (Click to Copy)</div>
+        <!-- Replace YOUR_PUBLIC_IP with the instance public IPv4 (and in copyIP() below). -->
+        <div class="ip-box" onclick="copyIP()" title="Click to copy IP address">YOUR_PUBLIC_IP</div>
+
+        <div id="ssl-badge" class="badge">Checking Security...</div>
+
+        <div class="footer">&copy;2026 | Cooked by Blessing U. : Powered by AWS EC2 & OpenSSL</div>
+    </div>
+
+    <script>
+        // Update the user's local clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Copy IP to clipboard
+        function copyIP() {
+            const ip = "YOUR_PUBLIC_IP";
+            navigator.clipboard.writeText(ip).then(() => {
+                alert("IP Address copied: " + ip);
+            });
+        }
+
+        // Verify SSL Status
+        const badge = document.getElementById('ssl-badge');
+        if (window.location.protocol === 'https:') {
+            badge.innerText = "✓ SSL ENCRYPTION ACTIVE";
+            badge.className = "badge secure";
+        } else {
+            badge.innerText = "⚠ INSECURE CONNECTION";
+            badge.className = "badge insecure";
+        }
+    </script>
+</body>
+
+</html>
