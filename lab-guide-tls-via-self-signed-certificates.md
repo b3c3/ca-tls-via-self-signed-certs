@@ -324,14 +324,14 @@ Create the **REDIRECT** vhost configuration file: `/etc/httpd/conf.d/redirect.co
 **Why `ServerAlias`?** <br/>
 `ServerName` is the main host Apache matches for this **vhost** (Virtual Host). <br/>If you only set that to your DNS name, a client that opens `http://<public-ip>/` may **not** match this vhost, so **no redirect** occurs. <br/>You need to add **`ServerAlias`** with your EC2 instance’s **public IPv4 address** (and any other IPs/DNS names clients use to access the server, separated by spaces) so both **DNS** and **IP** HTTP requests hit the same redirect.
 
-You can put **several** DNS names or IPs on one `ServerAlias` line (space-separated). Example (adjust or split across multiple `ServerAlias` lines if you prefer):
+You can put **several** DNS names or IPs on one `ServerAlias` line (space-separated) or split them across multiple `ServerAlias` lines if you prefer:
 
 ```apache
     # Inside the same <VirtualHost *:80> … </VirtualHost> block:
     ServerAlias 34.204.91.3 10.0.0.50 api.example.com
 ```
 
-Use only hostnames or addresses clients **actually** use to reach this server (for a typical public EC2 test, the **public DNS** and **public IPv4** are enough).
+- Use only hostnames or addresses clients **actually** use to reach this server (for a typical public EC2 test, the **public DNS** and **public IPv4** are enough).
 
 An example is shown below using a DNS name and a public IP address as `ServerName` and `ServerAlias` respectively:
 
