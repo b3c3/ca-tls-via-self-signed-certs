@@ -313,22 +313,30 @@ Recommended inbound rules for this optional section:
 
 Create `/etc/httpd/conf.d/redirect.conf`:
 
+**Why `ServerAlias`:** `ServerName` is the main host Apache matches for this vhost. If you only set that to your DNS name, a client that opens `http://<public-ip>/` may **not** match this vhost, so **no redirect** occurs. Add **`ServerAlias`** with your instance’s **public IPv4** (and any other names clients use) so both **DNS** and **IP** HTTP requests hit the same redirect.
+
+Use your real DNS name and public IP (example shape):
+
 ```apache
 <VirtualHost *:80>
-    ServerName your-domain-or-ip
-    Redirect permanent / https://your-domain-or-ip/
+    ServerName ec2-34-204-91-3.compute-1.amazonaws.com
+    ServerAlias 34.204.91.3
+    Redirect permanent / https://ec2-34-204-91-3.compute-1.amazonaws.com/
 </VirtualHost>
 ```
+
+Point **`Redirect`** at a URL whose hostname appears in your **server certificate SAN** (usually the DNS name). Replace the example values with your EC2 hostname and IP.
 
 Apply:
 
 ```bash
 sudo apachectl configtest
 sudo systemctl restart httpd
-curl -I http://your-domain-or-ip
+curl -I http://your-dns-name
+curl -I http://your-public-ip
 ```
 
-Expected response includes `HTTP/1.1 301` and a `Location: https://...` header.
+Expected response includes `HTTP/1.1 301` and a `Location: https://...` header for **both** requests when `ServerName` / `ServerAlias` match how you connect.
 
 ---
 
