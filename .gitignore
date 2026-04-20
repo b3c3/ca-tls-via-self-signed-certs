@@ -16,3 +16,6 @@ root-ca-tls-items/
 
 # Visual Studio Code — multi-root workspace definitions
 *.code-workspace
+
+# MacOS specific files
+.DS_Store
