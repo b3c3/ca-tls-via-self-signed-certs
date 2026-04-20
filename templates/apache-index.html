@@ -50,7 +50,7 @@
 
         h1 {
             color: #00d4ff;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 300;
             letter-spacing: 4px;
             margin: 20px 0;
@@ -115,8 +115,8 @@
         <h1>● STATUS: Apache (httpd) Web Server Active</h1>
 
         <div class="label">Public IPv4 (Click to Copy)</div>
-        <!-- Replace YOUR_PUBLIC_IP with the instance public IPv4 (and in copyIP() below). -->
-        <div class="ip-box" onclick="copyIP()" title="Click to copy IP address">YOUR_PUBLIC_IP</div>
+        <!-- Replace YOUR_PUBLIC_IP with the instance public IPv4 (single place — copyIP reads this element). -->
+        <div id="public-ip" class="ip-box" onclick="copyIP()" title="Click to copy IP address">YOUR_PUBLIC_IP</div>
 
         <div id="ssl-badge" class="badge">Checking Security...</div>
 
@@ -132,9 +132,11 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Copy IP to clipboard
+        // Copy IP to clipboard (text is read from #public-ip — edit that element only)
         function copyIP() {
-            const ip = "YOUR_PUBLIC_IP";
+            const el = document.getElementById("public-ip");
+            const ip = (el && el.textContent) ? el.textContent.trim() : "";
+            if (!ip) return;
             navigator.clipboard.writeText(ip).then(() => {
                 alert("IP Address copied: " + ip);
             });
