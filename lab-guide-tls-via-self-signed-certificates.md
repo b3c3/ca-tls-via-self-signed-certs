@@ -3,9 +3,9 @@
 ## Document Metadata
 
 - Owner: CIL Academy
-- Contact: [team@cil.acdemy](mailto:team@cil.acdemy)
+- Contact: [team@cil.academy](mailto:team@cil.academy)
 - Classification: Internal
-- Version: v20Apr2026T0407BST
+- Version: v20Apr2026T1312BST
 
 ## Purpose
 
