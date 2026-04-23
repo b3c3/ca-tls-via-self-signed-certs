@@ -142,7 +142,7 @@ For the server certificate, you will need **two configuration files**:
 
 These configuration files are used to provide default values for the CSR and to specify the X.509 **extensions** to be included in the certificate.
 
-<br/>You have **two options** for generating **these files** (Option B is recommended):
+You have **two options** for generating **these files** (Option B is recommended):
 
 - Option A: Manually **copy, paste** and **edit** the provided template files
 - Option B: Use the **interactive** bash script provided: `scripts/init-cert-config.sh`
@@ -465,13 +465,13 @@ Firefox may use its own trust store:
 3. `Authorities` -> `Import`
 4. Select `root-ca-tls-items/root-ca-cert.pem`, then enable trust for websites
 
-After trust import, test again:
+After trust import, test again (in Firefox or any other browser). For `curl`, you can use the command below:
 
 ```bash
 curl -vI https://localhost --cacert root-ca-tls-items/root-ca-cert.pem
 ```
 
-You should no longer need the `--insecure` flag when trust is configured correctly.
+You should no longer need the `--insecure` or `-k` flags when trust is configured correctly.
 
 ---
 
