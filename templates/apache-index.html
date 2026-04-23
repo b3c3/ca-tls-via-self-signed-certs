@@ -120,7 +120,7 @@
 
         <div id="ssl-badge" class="badge">Checking Security...</div>
 
-        <div class="footer">&copy;2026 | Cooked by Blessing U. : Powered by AWS EC2 & OpenSSL</div>
+        <div class="footer">&copy;<span id="copy-year"></span> | Cooked by Blessing U. : Powered by AWS EC2 & OpenSSL</div>
     </div>
 
     <script>
@@ -131,6 +131,9 @@
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        // Footer copyright year follows the user's clock
+        document.getElementById('copy-year').textContent = new Date().getFullYear();
 
         // Copy IP to clipboard (text is read from #public-ip — edit that element only)
         function copyIP() {

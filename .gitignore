@@ -1,16 +1,7 @@
-# Generated from templates/ (via scripts/init-cert-config.sh or manual copy)
-server.csr.cnf
-server_v3.ext
-
-# OpenSSL lab outputs (keys, CSRs, certs, CA serial)
-server.csr
-root-ca-private-key.pem
-root-ca-cert.pem
-root-ca-cert.srl
-server-private-key.pem
-server-cert.pem
-
-# Local TLS artifact directories
+# Local TLS artefact directories
+# All generated lab outputs (keys, CSRs, certs, CA serial, and the CSR/ext config files produced from templates)
+# live inside these two directories, so we ignore their contents wholesale and keep the directories themselves
+# in version control via .gitkeep placeholders.
 server-tls-items/*
 !server-tls-items/.gitkeep
 root-ca-tls-items/*

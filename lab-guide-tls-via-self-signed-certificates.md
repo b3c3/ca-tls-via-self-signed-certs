@@ -5,7 +5,7 @@
 - Owner: CIL Academy
 - Contact: [team@cil.academy](mailto:team@cil.academy)
 - Classification: Internal
-- Version: v22Apr2026T1921BST
+- Version: v23Apr2026T1902BST
 
 ## Purpose
 
@@ -20,7 +20,19 @@ Use this for lab and internal environments only. Do not use a private self-signe
 
 ---
 
-## Part 1: Generate CA and Server Certificates
+## Part 1: General Overview, Prerequisites, and Artefacts List for the Lab
+
+### Map of outputs
+
+Before diving in, keep this mental picture in mind — it shows how the artefacts you will generate in Part 2 relate to one another:
+
+```text
+Root CA key ──► Root CA cert ──► (signs) ──► Server cert ◄── Server key + CSR + ext file
+```
+
+- The **Root CA key** signs the self-signed **Root CA cert** (your trust anchor).
+- The **Root CA key** is then used (together with the **Root CA cert**) to sign a **Server cert**.
+- The **Server cert** is derived from the **Server key**, the **CSR**, and the **X.509 extensions file** (which carries the SAN values).
 
 ### Prerequisites
 
@@ -40,27 +52,39 @@ The table below lists each file and its role. For how `.pem` and `.crt` relate t
 |------|---------------|-------------|
 | `root-ca-private-key.pem` | `root-ca-tls-items/` | **Root CA private key.** Signs CSRs; proves CA authority. Treat this file like a **Secret** — protect like any signing key. |
 | `root-ca-cert.pem` | `root-ca-tls-items/` | **Root CA certificate** (public). Your trust anchor. This is your Root CA's Public Certificate. It is a self-signed certificate. <br/>Note: It is safe to copy this file to clients so they can trust certificates issued by your Root CA. |
-| `root-ca-cert.srl` | `root-ca-tls-items/` | **CA serial number file** <br/> This file is used by OpenSSL when signing, and keeps track of issued certificate serial numbers for this CA. <br/> It may appear after the first `x509 -req` command to sign a CSR (see [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case)). |
+| `root-ca-cert.srl` | `root-ca-tls-items/` | **CA serial number file** <br/> This file is used by OpenSSL when signing, and keeps track of issued certificate serial numbers for this CA. <br/> It may appear after the first `x509 -req` command to sign a CSR (see [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-the-root-ca-in-our-case)). |
 | `server.csr.cnf.template` | `templates/` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). <br/> - Copy to `server-tls-items/server.csr.cnf` and use as the **CSR config file**. <br/> - Alternatively, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file based on this template. <br/> - **Note:** The CSR config file is used to generate the server's private key and CSR in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
-| `server_v3.ext.template` | `templates/` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server-tls-items/server_v3.ext` and use as the X.509 extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case). |
+| `server_v3.ext.template` | `templates/` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server-tls-items/server_v3.ext` and use as the X.509 extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-the-root-ca-in-our-case). |
 | `server.csr.cnf` | `server-tls-items/` | The CSR configuration file that is read by OpenSSL when generating the following two files (see [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr)): <br/> - the CSR (Certificate Signing Request) file: `server-tls-items/server.csr` and <br/> - the Server's Private Key file: `server-tls-items/server-private-key.pem`. <br/> |
-| `server_v3.ext` | `server-tls-items/` | This configuration file contains information about the X.509 extensions (SAN, key usage, etc.) that will be included in the server certificate. It is passed to `openssl x509` when the CA signs the server certificate (See [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case)). <br/> - Note: SANs must match what clients use in the URL. |
-| `server.csr` | `server-tls-items/` | This is the actual **Certificate Signing Request** (CSR) file, encoded in PEM format. It contains the server's public key and subject information; it is an intermediate artifact for the signing step. This file is generated in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
+| `server_v3.ext` | `server-tls-items/` | This configuration file contains information about the X.509 extensions (SAN, key usage, etc.) that will be included in the server certificate. It is passed to `openssl x509` when the CA signs the server certificate (See [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-the-root-ca-in-our-case)). <br/> - Note: SANs must match what clients use in the URL. |
+| `server.csr` | `server-tls-items/` | This is the actual **Certificate Signing Request** (CSR) file, encoded in PEM format. It contains the server's public key and subject information; it is an intermediate artefact for the signing step. This file is generated in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
 | `server-private-key.pem` | `server-tls-items/` | The **Server's Private Key**. Treat this file like a **Secret**, restrict its permissions (`chmod 600`) and keep it protected. <br/> This file is generated in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr) and copied to the endpoint server (e.g. Apache httpd) alongside the Server's TLS Certificate (`server-cert.pem`). |
-| `server-cert.pem` | `server-tls-items/` | The **Server's TLS Certificate**, signed by the Root CA and encoded in PEM format. <br/>This is considered a public file, i.e., it is generally safe to share; it contains no private key. <br/> Along with the Server's Private key (`server-private-key.pem`), this file is copied to the endpoint server and referenced by the **Web Server's** configuration (e.g. Apache's `SSLCertificateFile`). This file is generated in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case). |
+| `server-cert.pem` | `server-tls-items/` | The **Server's TLS Certificate**, signed by the Root CA and encoded in PEM format. <br/>This is considered a public file, i.e., it is generally safe to share; it contains no private key. <br/> Along with the Server's Private key (`server-private-key.pem`), this file is copied to the endpoint server and referenced by the **Web Server's** configuration (e.g. Apache's `SSLCertificateFile`). This file is generated in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-the-root-ca-in-our-case). |
 
 <br/>
+
+## Part 2: Generate CA and Server Certificates
 
 ### Recommended Template Workflow
 The following steps will guide you through the process of generating the Root CA and Server certificates.
 
-### 1) Check OpenSSL
+Before starting, if the two lab artefact directories (`root-ca-tls-items` and `server-tls-items`) do not exist in the repo root, please create them using the command below:
+
+```bash
+mkdir -p root-ca-tls-items server-tls-items
+```
+
+- **Note:** 
+  - The `mkdir -p` command is **idempotent**, so it is safe to run even if the directories already exist.
+  - The commands in the subsequent steps will write certificates and keys into these directories. Use `ls -lhart` to verify their creation and content.
+
+#### 1) Check OpenSSL
 
 ```bash
 openssl version -a
 ```
 
-### 2) Create the CA Private Key
+#### 2) Create the CA Private Key
 
 Use the `openssl genrsa` command to generate the **Root CA**'s Private Key.
 
@@ -80,7 +104,9 @@ Restrict the CA private key permissions to 600. This makes the file private so t
 chmod 600 root-ca-tls-items/root-ca-private-key.pem
 ```
 
-### 3) Create the CA Certificate
+- **Note on RSA key sizes:** This lab uses **2048-bit** RSA for both the Root CA and the server certificate, which is still considered safe today and is fast enough for lab use. In production, many organisations prefer **4096-bit** for long-lived Root CA keys (often valid for 10–20 years) and **2048- or 3072-bit** for shorter-lived server certificates, trading extra CPU work for a larger security margin.
+
+#### 3) Create the CA Certificate
 
 ```bash
 openssl req -new -x509 \
@@ -92,7 +118,7 @@ openssl req -new -x509 \
 
 | Option / Parameter | Meaning |
 |------|-------------|
-| `openssl req` | `openssl req` starts the OpenSSL certificate request tool. <br/> In this command, it is used together with `-x509` option to create a certificate directly. |
+| `openssl req` | `openssl req` starts the OpenSSL certificate request tool. <br/> In this command, it is used together with the `-x509` option to create a certificate directly. |
 | `-new` | The `-new` option tells OpenSSL to create a new request/certificate operation instead of reusing an existing one. |
 | `-x509` | The `-x509` option tells OpenSSL to output a self-signed X.509 certificate (your Root CA certificate) rather than only creating a CSR. |
 | `-days 3650` | The `-days` option sets how long the certificate is valid. Here, `3650` means 3650 days (i.e. ten years). |
@@ -100,13 +126,12 @@ openssl req -new -x509 \
 | `-key root-ca-tls-items/root-ca-private-key.pem` | The `-key` option specifies which private key to use for signing the certificate. <br/> Here, it uses the Root CA private key file. |
 | `-out root-ca-tls-items/root-ca-cert.pem` | The `-out` option specifies the output path for the generated certificate. <br/> Here, it writes the Root CA certificate to `root-ca-tls-items/root-ca-cert.pem`. |
 
-When prompted, set a clear CA Common Name (for example, `Lab Root CA`).
+When you run this command, OpenSSL will prompt you interactively for a series of **Distinguished Name (DN)** fields — Country Name, State/Province, Locality (City), Organisation Name, Organisational Unit Name, Common Name, and Email Address. Provide suitable values for each; in particular, set a clear CA Common Name (for example, `Lab Root CA`).
 
-### Important Note:
-In this lab, this first CA certificate is your **Root CA** (Root Certificate Authority): it signs server certificates directly and becomes the trust anchor you import on clients.
+**Important Note:** In this lab, this first CA certificate is your **Root CA** (Root Certificate Authority): it signs server certificates directly and becomes the trust anchor you import on clients.
 
-### 4) Create the Configuration Files Required for the Server Certificate
-You may have noticed that when creating the Root CA items above, you were asked a lot of questions about the CA such as `location`, `state`, `city`, `organization`, etc. <br/>
+#### 4) Create the Configuration Files Required for the Server Certificate
+You may have noticed that when creating the Root CA items above, you were asked a lot of questions about the CA such as `location`, `state`, `city`, `organisation`, etc. <br/>
 Instead of answering these questions interactively every time, you can create configuration files to store these values, and simply pass the configuration file to the `openssl req` command. <br/>
 We will use this approach to create the server certificate configuration files. <br/>
 
@@ -117,22 +142,18 @@ For the server certificate, you will need **two configuration files**:
 
 These configuration files are used to provide default values for the CSR and to specify the X.509 **extensions** to be included in the certificate.
 
-<br/>You have **two options** for generating **these files** (I recommend Option B):
+<br/>You have **two options** for generating **these files** (Option B is recommended):
 
 - Option A: Manually **copy, paste** and **edit** the provided template files
 - Option B: Use the **interactive** bash script provided: `scripts/init-cert-config.sh`
 
 **For Option A:**
-- Create the lab artifact directories in the repo root if not already created (`folders` for those from the Microsoft Windows world)
-  - `server-tls-items` and 
-  - `root-ca-tls-items`
-- Then copy the provided templates into `server-tls-items/` (they come with sample EC2-style values; replace anything that does not match your server)
-- Remember to replace placeholders in the files as needed e.g., edit the `CN` and `SAN` entries to match your real DNS/IP.
+- You should already have created `server-tls-items/` and `root-ca-tls-items/` in the "Before starting" step above; if not, run the `mkdir -p` command from that section now.
+  - **Note:** a *directory* on Linux/macOS is the same concept as a *folder* on Windows.
+- Copy the provided templates into `server-tls-items/` (they come with sample EC2-style values; replace anything that does not match your server).
+- Remember to replace placeholders in the files as needed, e.g., edit the `CN` entry to match your real DNS/IP, and the `DNS.n`/`IP.n` entries in `server_v3.ext` for your Subject Alternative Names.
 
 ```bash
-# Create the lab artifact directories if not already existing
-mkdir -p server-tls-items root-ca-tls-items
-
 # Copy the provided templates into server-tls-items/
 cp templates/server.csr.cnf.template server-tls-items/server.csr.cnf
 cp templates/server_v3.ext.template server-tls-items/server_v3.ext
@@ -146,10 +167,10 @@ cp templates/server_v3.ext.template server-tls-items/server_v3.ext
 ./scripts/init-cert-config.sh
 ```
 
-### 5) Create CSR Configuration for Server Identity
+#### 5) Review CSR Configuration for Server Identity
 
-Review the `server-tls-items/server.csr.cnf` file created in the previous step to ensure the values are set correctly. If not, make any updates required.
-- **Important**: remember to replace placeholders like `your-domain-or-ip` with your real DNS name or IP in the `CN` and `SAN` entries.
+Review the `server-tls-items/server.csr.cnf` file created in Step 4 to ensure the values are set correctly. If not, make any updates required.
+- **Important**: remember to replace placeholders like `your-domain-or-ip` with your real DNS name or IP in the `CN` entry. (Subject Alternative Names are set separately in `server_v3.ext` — see Step 7.)
 
 ```ini
 [req]
@@ -162,14 +183,14 @@ distinguished_name = dn
 C = US
 ST = StateName
 L = CityName
-O = OrganizationName
+O = OrganisationName
 OU = DepartmentName
 emailAddress = admin@example.com
 CN = your-domain-or-ip
 ```
 
 
-### 6) Generate the Server Private Key and Certificate Signing Request (CSR)
+#### 6) Generate the Server Private Key and Certificate Signing Request (CSR)
 
 The command below generates two items in the `server-tls-items` folder: 
 1. The **Server Private Key** (`server-tls-items/server-private-key.pem`) and
@@ -188,7 +209,7 @@ openssl req -new -nodes \
 |------|-------------|
 | `openssl req` | `openssl req` starts the OpenSSL certificate request tool. In this step, it is used to generate a server private key and a CSR. |
 | `-new` | The `-new` option tells OpenSSL to create a brand-new CSR. |
-| `-nodes` | The `-nodes` option means "no DES/Encryption" for the private key output. <br/> Therefore, the private key is not protected by a passphrase. |
+| `-nodes` | The `-nodes` option (originally short for "no DES") tells OpenSSL not to encrypt the private key output. <br/> In practice this means the generated private key file is not protected by a passphrase, so tools can read it without prompting. |
 | `-out server-tls-items/server.csr` | The `-out` option specifies the location or path to output the generated CSR file to. <br/> In this case, it saves the generated CSR to `server-tls-items/server.csr`. |
 | `-keyout server-tls-items/server-private-key.pem` | The `-keyout` option specifies where to save the generated server private key. <br/> In this case, it saves the key to `server-tls-items/server-private-key.pem`. |
 | `-config server-tls-items/server.csr.cnf` | The `-config` option tells OpenSSL which configuration file to read for subject details and request settings. <br/> In this case, it reads `server-tls-items/server.csr.cnf`. |
@@ -200,10 +221,10 @@ Restrict the server private key permissions to 600. This makes the file private 
 chmod 600 server-tls-items/server-private-key.pem
 ```
 
-### 7) Create or Review the Server Certificate Extensions (SAN) Configuration File
+#### 7) Create or Review the Server Certificate Extensions Configuration File
 
 Certificate extensions are additional data fields that define extra features or constraints for a certificate, such as the Subject Alternative Name (SAN) for securing multiple domains.    
-For more information, you can explore the technical documentation on certificate configurations online (https://docs.openssl.org/3.6/man5/x509v3_config/#subject-alternative-name).    
+For more information, see the [OpenSSL `x509v3_config` documentation](https://docs.openssl.org/3.6/man5/x509v3_config/#subject-alternative-name).    
 
 Create or review the `server-tls-items/server_v3.ext` file created in Step 4 to ensure the values are set correctly.
 
@@ -221,11 +242,11 @@ DNS.1 = your-domain.example.com
 IP.1 = 1.2.3.4
 ```
 
-### 8) Sign the Server Certificate with your Certificate Authority (CA) (Root CA in our case)
+#### 8) Sign the Server Certificate with your Certificate Authority (the Root CA in our case)
 
 In the [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr), you created a CSR (Certificate Signing Request) for the server. <br/>
 In this step, you will sign the CSR with your CA's private key to generate a server certificate. <br/>
-This is how it works in the real world, you would typically have your CSR signed by a well known commercial CA (for public websites) or an internal well-known CA (for internal-only websites and systems).
+This is how it works in the real world — you would typically have your CSR signed by a well-known commercial CA (for public websites) or an internal well-known CA (for internal-only websites and systems).
 
 <br/>
 The signing command is as follows:
@@ -259,16 +280,16 @@ openssl x509 -req \
 
 - **Note:** You may use any `-days` value you like for this lab (for example `365` for one year or `90` for three months).
 
-The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers have pushed toward **shorter maximum lifetimes** for **public** certificates—often around **398 days**.   
+The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers and the **CA/Browser Forum** have pushed toward ever-shorter maximum lifetimes for **public** certificates. The headline figure for some years was **398 days**, but under CA/Browser Forum ballot **SC-081** that maximum is now being reduced in phases: **200 days** from **15 March 2026**, **100 days** from **15 March 2027**, and **47 days** from **15 March 2029**.   
 
-In this lab, your server certificate is signed by **your private Root CA** (not by a **public** CA), so limits on **public** certificate lifetimes do not apply to your `-days` choice here.    
+In this lab, your server certificate is signed by **your private Root CA** (not by a **public** CA), so these public-certificate limits do not apply to your `-days` choice here.    
 However, when you work on real **public** sites later, shorter certificate lifetimes help because of the following reasons:
 
 1. **Less time at risk if a certificate is stolen or mis-issued** (smaller window for abuse).
 2. **Faster rollout of stronger algorithms** when the industry deprecates older ones (e.g., SHA-1).
 3. **Easier renewal at scale** when teams automate with ACME, managed PKI, or similar tools (for example Let’s Encrypt).
 
-### 9) Verify the Issued Certificate
+#### 9) Verify the Issued Certificate
 
 In this step, you will verify the server certificate created in the previous step. Use the command below to do so:
 
@@ -278,24 +299,66 @@ openssl x509 -in server-tls-items/server-cert.pem -noout -text
 
 | Option / Parameter | Meaning |
 |------|-------------|
-| `openssl x509` | `openssl x509` runs the OpenSSL certificate inspection/signing tool. In this step, it is used to inspect and verify the issued server certificate. |
-| `-in server-tls-items/server-cert.pem` | The `-in` option specifies which certificate file to read. Here, it reads `server-tls-items/server-cert.pem`. |
-| `-noout` | The `-noout` option suppresses the default certificate output format and shows only the information requested by other flags. |
+| `openssl x509` | `openssl x509` runs the OpenSSL certificate inspection/signing tool. <br/> In this step, it is used to inspect and verify the issued server certificate. |
+| `-in server-tls-items/server-cert.pem` | The `-in` option specifies which certificate file to read. <br/> Here, it reads `server-tls-items/server-cert.pem`. |
+| `-noout` | The `-noout` option prevents OpenSSL from printing the PEM-encoded certificate itself, so only the information requested by other flags (for example, `-text`) is shown. |
 | `-text` | The `-text` option prints the certificate details in a readable text format (issuer, subject, SANs, validity, extensions, and more). |
 
-Confirm the following:
+<br/>
+You should see output similar to the (abbreviated) example below:
 
-- `Issuer` is your CA.
-- `X509v3 Subject Alternative Name` includes the correct DNS/IP.
-- `Basic Constraints: CA:FALSE`.
+```text
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 4f:2a:...:9c
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=US, ST=Virginia, L=Ashburn, O=CIL Academy, OU=Cloud Engineering, CN=Lab Root CA
+        Validity
+            Not Before: Apr 22 10:00:00 2026 GMT
+            Not After : Jul 25 10:00:00 2028 GMT
+        Subject: C=US, ST=Virginia, L=Ashburn, O=CIL Academy, OU=Cloud Engineering, CN=ec2-203-0-113-10.compute-1.amazonaws.com
+        ...
+        X509v3 extensions:
+            X509v3 Basic Constraints:
+                CA:FALSE
+            X509v3 Key Usage:
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication
+            X509v3 Subject Alternative Name:
+                DNS:ec2-203-0-113-10.compute-1.amazonaws.com, IP Address:203.0.113.10
+    Signature Algorithm: sha256WithRSAEncryption
+        ...
+```
 
-**Note:** `CA:FALSE` means **Basic Constraints** marks this as a **leaf (end-entity)** certificate: it must NOT be used to issue other certificates.
-- In this lab, this leaf certificate is used to secure your **TLS server** (HTTPS endpoint) which is the **end-entity**.
+Based on the output of the command above, confirm the following:
+
+- The `Issuer` is your Root CA (the CN should match the Root CA's Common Name you set in Step 3).
+- The `X509v3 Subject Alternative Name` includes the correct DNS/IP (the values you set in `server-tls-items/server_v3.ext`).
+- The `X509v3 Basic Constraints` confirms `CA:FALSE`.
+
+**Note:** `CA:FALSE` means the **Basic Constraints** marks this as a **leaf (end-entity)** certificate: it must NOT be used to issue other certificates.
+- In this lab, this leaf certificate is used to secure your **Web Server** (HTTPS endpoint) which is the **end-entity**.
 - In contrast, `CA:TRUE` usually appears on **CA certificates** (Root or Intermediate) that **sign** other certificates in the chain.
 
 ---
 
-## Part 2: Deploy the Self-Signed TLS Certificate on Amazon EC2 (Apache on Amazon Linux)
+## Part 3: Deploy the Self-Signed TLS Certificate on Amazon EC2 (Apache on Amazon Linux)
+
+### Prerequisites
+
+The following steps assume that you have an EC2 instance running with Apache **httpd** installed and configured, and that the repository (or at least the `templates/` folder) is available on that instance.
+
+**Tip:** use the `templates/apache-index.html` file for a simple landing page to serve — nicer than the default Apache "It Works!" page.
+
+From the repository root on the EC2 instance, run:
+
+```bash
+sudo cp templates/apache-index.html /var/www/html/index.html
+```
+
+- **Note:** the template contains a placeholder element with the text `YOUR_PUBLIC_IP`. After copying, edit `/var/www/html/index.html` and replace `YOUR_PUBLIC_IP` with the instance's Public IPv4 address so the "Click to Copy" box shows a real value.
 
 ### 1) Open inbound HTTPS in Security Group
 
@@ -322,13 +385,14 @@ sudo chmod 600 /etc/pki/tls/private/server-private-key.pem
 
 ### 4) Configure Apache TLS Settings
 
-Edit:
+Edit the `/etc/httpd/conf.d/ssl.conf` file using nano, vim, or any other editor of your choice.
 
 ```bash
 sudo nano /etc/httpd/conf.d/ssl.conf
 ```
 
-Set:
+Navigate through the `ssl.conf` file and update or add the following SSL directives.  
+- **Note:** Make sure the paths match where you copied the files in the previous step.
 
 ```apache
 SSLCertificateFile /etc/pki/tls/certs/server-cert.pem
@@ -351,15 +415,24 @@ curl -vI --insecure https://localhost
 
 At this stage, browser warnings or `curl` trust warnings are expected because your Root CA certificate (`root-ca-tls-items/root-ca-cert.pem`) is not trusted on client machines yet.
 
-`--insecure` is used here to confirm TLS is working before client trust is configured.
+The `--insecure` flag on the `curl` command above is used to confirm TLS is working before client trust is configured.
+- The flags `-k` and `--insecure` perform the same function in `curl`. They tell `curl` to skip the verification of the server's SSL/TLS certificate. Therefore, any of these flags allow you to connect to a server that has an invalid, expired, or self-signed certificate without `curl` throwing an error (like `curl: (60) SSL certificate problem`).
+
+- Note that this is OK for testing purposes but should be avoided in production. While the connection is still encrypted, it is unverified. This means you are vulnerable to "**person-in-the-middle**" attacks because `curl` isn't checking if the server you're interacting with is actually who it claims to be, hence the need to avoid in production. 
 
 ---
 
-## Part 3: Trust Your Private CA on Client Machines
+## Part 4: Trust Your Private CA on Client Machines
 
-As noted in the preceding section, browsers will not trust your private CA by default. This is expected: only well-known public CAs are trusted by default. The following steps show how to enable trust for your private CA on client machines (browsers, `curl`, and similar tools).
+As noted in the preceding section, browsers will not trust your private CA by default. This is expected: only well-known public CAs are trusted by default.    
+The following steps show how to enable trust for your private CA on client machines (browsers, `curl`, and similar tools).
 
-Some steps below change both the destination filename and the extension (for example, from `root-ca-tls-items/root-ca-cert.pem` to `my_private_ca.crt`) to satisfy the target operating system trust-store conventions. As explained in ["Dot PEM vs Dot CRT"](#dot-pem-vs-dot-crt-a-note-on-certificate-filename-extensions), both extensions can store the same certificate data; only the filename and extension labels change, not the certificate content itself.
+Some steps below change both the destination filename and the extension to satisfy the target operating system trust-store conventions.
+- For example, from `root-ca-cert.pem` to `my_private_ca.crt`.    
+
+As explained in ["Dot PEM vs Dot CRT"](#dot-pem-vs-dot-crt-a-note-on-certificate-filename-extensions), both extensions can store the same certificate data; only the filename and extension labels change, not the certificate content itself.    
+
+Follow the steps below to import your Root CA certificate into the trust stores of different operating systems and browsers.  
 
 ### Linux (Ubuntu / Debian)
 
@@ -398,24 +471,30 @@ After trust import, test again:
 curl -vI https://localhost --cacert root-ca-tls-items/root-ca-cert.pem
 ```
 
-You should no longer need `--insecure` when trust is configured correctly.
+You should no longer need the `--insecure` flag when trust is configured correctly.
 
 ---
 
 ## Optional: Force HTTP -> HTTPS Redirect
 
-Important security group requirement:
+Once you have configured TLS/HTTPS correctly on your Web Server, you may (optionally) want to force all HTTP traffic to be redirected to HTTPS.    
+So in practice, when a user visits your site using HTTP, the server will immediately respond with a redirect telling their browser to connect using HTTPS instead, and the user will be landed on the HTTPS version of your site without any user intervention. The steps below accomplish this by configuring a separate Apache Virtual Host to enable that redirection. 
 
-- Keep inbound `443` open as configured in Part 2, Step 1.
+### Important security group requirement
+
+- Keep inbound `443` open as configured in Part 3, Step 1.
 - Also open inbound `80` (HTTP), otherwise clients cannot reach port 80 to receive the redirect response.
 
-Recommended inbound rules for this optional section:
+### Recommended inbound rules for this optional section
 
 - HTTPS: TCP `443`
 - HTTP: TCP `80`
 - Source: your test IP (preferred) or `0.0.0.0/0` for broader access
 
-Create the **REDIRECT** vhost configuration file: `/etc/httpd/conf.d/redirect.conf`:
+### Create the **REDIRECT** vhost configuration file: `/etc/httpd/conf.d/redirect.conf`
+
+- If the `/etc/httpd/conf.d/redirect.conf` file does not exist, create it.
+- If the file exists, add the following lines to it or update as necessary (if other redirect rules are already present).
 
 ```apache
 <VirtualHost *:80>
@@ -425,10 +504,12 @@ Create the **REDIRECT** vhost configuration file: `/etc/httpd/conf.d/redirect.co
 </VirtualHost>
 ```
 
-**Why `ServerAlias`?** <br/>
-`ServerName` is the main host Apache matches for this **vhost** (Virtual Host). <br/>If you only set that to your DNS name, a client that opens `http://<public-ip>/` may **not** match this vhost, so **no redirect** occurs. <br/>You need to add **`ServerAlias`** with your EC2 instance’s **public IPv4 address** (and any other IPs/DNS names clients use to access the server, separated by spaces) so both **DNS** and **IP** HTTP requests hit the same redirect.
+### Why `ServerAlias`?
+As per the configuration above, when Apache httpd receives a request on `port 80` (HTTP), it matches the incoming HTTP `Host` header against each **vhost**'s `ServerName` and `ServerAlias` values to decide which **vhost** (Virtual Host) to apply.
+- `ServerName` is the primary host Apache matches for this **vhost** configuration. However, if you only set that to your DNS name, a client that opens `http://<public-ip>/` sends `Host: <public-ip>`, which will **not** match this vhost — so **no redirect** occurs.
+- Therefore, you need to add **`ServerAlias`** with your EC2 instance’s **public IPv4 address** (and any other IPs/DNS names clients use to access the server, separated by spaces) so both **DNS** and **IP** HTTP requests hit the same redirect.
 
-You can put **several** DNS names or IPs on one `ServerAlias` line (space-separated) or split them across multiple `ServerAlias` lines if you prefer:
+You can put **several** DNS names or IPs on one `ServerAlias` line (space-separated) or split them across multiple `ServerAlias` lines if you prefer (example below):
 
 ```apache
     # Inside the same <VirtualHost *:80> … </VirtualHost> block:
@@ -447,10 +528,11 @@ An example is shown below using a DNS name and a public IP address as `ServerNam
 </VirtualHost>
 ```
 
-- Ensure the **`Redirect`** line points to a URL whose hostname appears in your **Server Certificate Subject Alternative Name (SAN)** (usually the DNS name).
+- Ensure the **`Redirect`** line points to a URL whose hostname appears in your **Server Certificate Subject Alternative Name (SAN)**. This is usually the DNS name.
 - Replace the example values above with your EC2 hostname (Public DNS) and IP (Public IPv4 address).
 
-Apply the changes and test the redirect:
+
+### Apply the changes and test the redirect
 
 ```bash
 sudo apachectl configtest
@@ -465,8 +547,9 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header f
 
 ## Final Checklist
 
-- Use the **Files used in this lab (reference)** table in Part 1 if you need a quick reminder of what each file is for.
+- Use the **Files used in this lab** table in Part 1 if you need a quick reminder of what each file is for.
 - Keep private files secret: `root-ca-tls-items/root-ca-private-key.pem` and `server-tls-items/server-private-key.pem`.
+- Ensure private keys are restricted with `chmod 600` and never committed to version control (the bundled `.gitignore` already excludes the contents of `root-ca-tls-items/` and `server-tls-items/` for this reason).
 - Share only public files: `root-ca-tls-items/root-ca-cert.pem` (for trust) and `server-tls-items/server-cert.pem` (server certificate).
 - If hostname/IP changes, reissue `server-tls-items/server-cert.pem` with updated SAN.
 - If CA private key is compromised, revoke trust and rebuild everything.
@@ -476,10 +559,10 @@ Expected response includes `HTTP/1.1 301` and a `Location: https://...` header f
 
 In this lab, we use `.pem` for all certificate and key files. However, you may see `.crt` used elsewhere. Both extensions are actually used in the wild.
 
-- What matters for Apache on Amazon Linux (and most other web servers) is the **file content** not whether the filename ends in `.crt` or `.pem`
-- The server expects PEM-formatted text, which is easily identified by headers such as `-----BEGIN CERTIFICATE-----` or `-----BEGIN PRIVATE KEY-----`
+- What matters for Apache on Amazon Linux (and most other Web Servers) is the **file content**, not whether the filename ends in `.crt` or `.pem`.
+- The server expects PEM-formatted text, which is easily identified by headers such as `-----BEGIN CERTIFICATE-----` or `-----BEGIN PRIVATE KEY-----`.
 - Apache **httpd** will serve TLS correctly with either as long as you point `SSLCertificateFile` at a PEM-encoded certificate and `SSLCertificateKeyFile` at the matching PEM-encoded private key.
-- This lab standardizes on `.pem` for consistency with OpenSSL defaults and the Root CA filenames.
+- This lab standardises on `.pem` for consistency with OpenSSL defaults and the Root CA filenames.
 
 ---
 

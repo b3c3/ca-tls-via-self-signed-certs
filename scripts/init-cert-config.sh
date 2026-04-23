@@ -12,6 +12,35 @@ EXT_TARGET="$SERVER_TLS_DIR/server_v3.ext"
 CSR_TEMPLATE="$TEMPLATE_DIR/server.csr.cnf.template"
 EXT_TEMPLATE="$TEMPLATE_DIR/server_v3.ext.template"
 
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+# Replace a single "KEY = VALUE" line in $CSR_TARGET via awk so we don't mix
+# awk and sed for in-place rewrites. Adds the line if the key is absent.
+dn_replace_line() {
+  local key="$1"
+  local val="$2"
+  local tmp
+  tmp="$(mktemp)"
+  awk -v k="$key" -v v="$val" '
+    BEGIN { replaced = 0 }
+    $0 ~ "^" k " = " { print k " = " v; replaced = 1; next }
+    { print }
+    END { if (!replaced) print k " = " v }
+  ' "$CSR_TARGET" > "$tmp" && mv "$tmp" "$CSR_TARGET"
+}
+
+dn_prompt_one() {
+  local key="$1"
+  local current newval trimmed
+  current="$(grep "^${key} = " "$CSR_TARGET" | head -n1 | sed "s/^${key} = //")"
+  read -r -p "${key} [${current}]: " newval || true
+  trimmed="$(printf '%s' "$newval" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [[ -n "$trimmed" ]]; then
+    dn_replace_line "$key" "$trimmed"
+  fi
+}
+
 for required in "$CSR_TEMPLATE" "$EXT_TEMPLATE"; do
   if [[ ! -f "$required" ]]; then
     echo "Missing required TLS certificate configuration template file: $required" >&2
@@ -45,28 +74,6 @@ update_dn="$(printf '%s' "${update_dn:-}" | tr '[:upper:]' '[:lower:]')"
 update_dn="${update_dn//[[:space:]]/}"
 
 if [[ "$update_dn" == "y" || "$update_dn" == "yes" ]]; then
-  dn_replace_line() {
-    local key="$1"
-    local val="$2"
-    local tmp
-    tmp="$(mktemp)"
-    awk -v k="$key" -v v="$val" '
-      $0 ~ "^" k " = " { print k " = " v; next }
-      { print }
-    ' "$CSR_TARGET" > "$tmp" && mv "$tmp" "$CSR_TARGET"
-  }
-
-  dn_prompt_one() {
-    local key="$1"
-    local current newval trimmed
-    current="$(grep "^${key} = " "$CSR_TARGET" | head -n1 | sed "s/^${key} = //")"
-    read -r -p "${key} [${current}]: " newval || true
-    trimmed="$(printf '%s' "$newval" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    if [[ -n "$trimmed" ]]; then
-      dn_replace_line "$key" "$trimmed"
-    fi
-  }
-
   dn_prompt_one "C"
   dn_prompt_one "ST"
   dn_prompt_one "L"
@@ -80,7 +87,7 @@ read -r -p "Enter Primary DNS name (leave empty to skip): " primary_dns
 read -r -p "Enter Primary IP address (leave empty to skip): " primary_ip
 
 if [[ -n "${primary_dns}" ]]; then
-  sed -i.bak "s|^CN = .*|CN = ${primary_dns}|" "$CSR_TARGET"
+  dn_replace_line "CN" "${primary_dns}"
 fi
 
 alt_lines=()
@@ -99,10 +106,12 @@ fi
 
 echo
 if [[ -n "${primary_dns}" || -n "${primary_ip}" ]]; then
-  echo "The primary DNS name and/or IP address have been added to the SAN entries section."
-  echo "Feel free to add additional SAN entries if needed. Press Enter when done."
+  echo "Note: your primary DNS and/or IP will replace the SAN entries from the template."
+  echo "Add any other SAN entries you also need below, or press Enter to finish."
 else
-  echo "Optional: add extra DNS or IP SAN entries below, or press Enter to skip and keep the SAN list already in the copied template."
+  echo "Optional: add extra DNS or IP SAN entries below."
+  echo "  - Press Enter now to skip and keep the SAN list from the copied template as-is."
+  echo "  - Any entries you add will REPLACE the template's SAN list (they do not merge)."
 fi
 while true; do
   read -r -p "Add SAN type [dns/ip/none]: " san_type
@@ -146,8 +155,6 @@ if [[ "${#alt_lines[@]}" -gt 0 ]]; then
   rm -f "${EXT_TARGET}.tmp"
 fi
 
-rm -f "$CSR_TARGET.bak"
-
 echo
 echo "Done."
 echo "Review and adjust the options as needed in the following configuration files:"
@@ -160,11 +167,13 @@ echo "  openssl req -new -nodes \\"
 echo "    -out server-tls-items/server.csr \\"
 echo "    -keyout server-tls-items/server-private-key.pem \\"
 echo "    -config server-tls-items/server.csr.cnf"
+echo "  chmod 600 server-tls-items/server-private-key.pem"
 echo "  openssl x509 -req \\"
 echo "    -in server-tls-items/server.csr \\"
 echo "    -CA root-ca-tls-items/root-ca-cert.pem \\"
 echo "    -CAkey root-ca-tls-items/root-ca-private-key.pem \\"
 echo "    -CAcreateserial \\"
+echo "    -CAserial root-ca-tls-items/root-ca-cert.srl \\"
 echo "    -out server-tls-items/server-cert.pem \\"
 echo "    -days 825 \\"
 echo "    -sha256 \\"
