@@ -40,14 +40,14 @@ The table below lists each file and its role. For how `.pem` and `.crt` relate t
 |------|---------------|-------------|
 | `root-ca-private-key.pem` | `root-ca-tls-items/` | **Root CA private key.** Signs CSRs; proves CA authority. Treat this file like a **Secret** — protect like any signing key. |
 | `root-ca-cert.pem` | `root-ca-tls-items/` | **Root CA certificate** (public). Your trust anchor. This is your Root CA's Public Certificate. It is a self-signed certificate. <br/>Note: It is safe to copy this file to clients so they can trust certificates issued by your Root CA. |
-| `root-ca-cert.srl` | `root-ca-tls-items/` | **CA serial number file** <br/> This file is used by OpenSSL when signing, and keeps track of issued certificate serial numbers for this CA. <br/> It may appear after the first `x509 -req` command to sign a CSR (see [Step 8](#8-sign-the-server-certificate-with-your-ca-root-ca-in-our-case)). |
+| `root-ca-cert.srl` | `root-ca-tls-items/` | **CA serial number file** <br/> This file is used by OpenSSL when signing, and keeps track of issued certificate serial numbers for this CA. <br/> It may appear after the first `x509 -req` command to sign a CSR (see [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case)). |
 | `server.csr.cnf.template` | `templates/` | Source template for OpenSSL **CSR settings** (DN, key size, etc.). <br/> - Copy to `server-tls-items/server.csr.cnf` and use as the **CSR config file**. <br/> - Alternatively, you can use the `scripts/init-cert-config.sh` script to generate the CSR config file based on this template. <br/> - **Note:** The CSR config file is used to generate the server's private key and CSR in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
-| `server_v3.ext.template` | `templates/` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server-tls-items/server_v3.ext` and use as the X.509 extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 8](#8-sign-the-server-certificate-with-your-ca-root-ca-in-our-case). |
+| `server_v3.ext.template` | `templates/` | Source template for **X.509 extensions** (SAN, key usage, etc.). <br/> - Copy to `server-tls-items/server_v3.ext` and use as the X.509 extension config file. <br/> - Alternatively, you can also use the `scripts/init-cert-config.sh` script to generate the extension config file based on this template. <br/> - **Note:** The X.509 extension file is used to generate the server's certificate in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case). |
 | `server.csr.cnf` | `server-tls-items/` | The CSR configuration file that is read by OpenSSL when generating the following two files (see [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr)): <br/> - the CSR (Certificate Signing Request) file: `server-tls-items/server.csr` and <br/> - the Server's Private Key file: `server-tls-items/server-private-key.pem`. <br/> |
-| `server_v3.ext` | `server-tls-items/` | This configuration file contains information about the X.509 extensions (SAN, key usage, etc.) that will be included in the server certificate. It is passed to `openssl x509` when the CA signs the server certificate (See [Step 8](#8-sign-the-server-certificate-with-your-ca-root-ca-in-our-case)). <br/> - Note: SANs must match what clients use in the URL. |
+| `server_v3.ext` | `server-tls-items/` | This configuration file contains information about the X.509 extensions (SAN, key usage, etc.) that will be included in the server certificate. It is passed to `openssl x509` when the CA signs the server certificate (See [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case)). <br/> - Note: SANs must match what clients use in the URL. |
 | `server.csr` | `server-tls-items/` | This is the actual **Certificate Signing Request** (CSR) file, encoded in PEM format. It contains the server's public key and subject information; it is an intermediate artifact for the signing step. This file is generated in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr). |
 | `server-private-key.pem` | `server-tls-items/` | The **Server's Private Key**. Treat this file like a **Secret**, restrict its permissions (`chmod 600`) and keep it protected. <br/> This file is generated in [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr) and copied to the endpoint server (e.g. Apache httpd) alongside the Server's TLS Certificate (`server-cert.pem`). |
-| `server-cert.pem` | `server-tls-items/` | The **Server's TLS Certificate**, signed by the Root CA and encoded in PEM format. <br/>This is considered a public file, i.e., it is generally safe to share; it contains no private key. <br/> Along with the Server's Private key (`server-private-key.pem`), this file is copied to the endpoint server and referenced by the **Web Server's** configuration (e.g. Apache's `SSLCertificateFile`). This file is generated in [Step 8](#8-sign-the-server-certificate-with-your-ca-root-ca-in-our-case). |
+| `server-cert.pem` | `server-tls-items/` | The **Server's TLS Certificate**, signed by the Root CA and encoded in PEM format. <br/>This is considered a public file, i.e., it is generally safe to share; it contains no private key. <br/> Along with the Server's Private key (`server-private-key.pem`), this file is copied to the endpoint server and referenced by the **Web Server's** configuration (e.g. Apache's `SSLCertificateFile`). This file is generated in [Step 8](#8-sign-the-server-certificate-with-your-certificate-authority-ca-root-ca-in-our-case). |
 
 <br/>
 
@@ -117,15 +117,17 @@ For the server certificate, you will need **two configuration files**:
 
 These configuration files are used to provide default values for the CSR and to specify the X.509 **extensions** to be included in the certificate.
 
-<br/>You have **two options** for generating **these files**:
+<br/>You have **two options** for generating **these files** (I recommend Option B):
 
 - Option A: Manually **copy, paste** and **edit** the provided template files
 - Option B: Use the **interactive** bash script provided: `scripts/init-cert-config.sh`
 
 **For Option A:**
-- Create the lab artifact directories in the repo root if not already created (`server-tls-items` and `root-ca-tls-items`)
+- Create the lab artifact directories in the repo root if not already created (`folders` for those from the Microsoft Windows world)
+  - `server-tls-items` and 
+  - `root-ca-tls-items`
 - Then copy the provided templates into `server-tls-items/` (they come with sample EC2-style values; replace anything that does not match your server)
-- Remember to replace placeholders in the files as needed // edit values so `CN` and SAN entries match your real DNS/IP.
+- Remember to replace placeholders in the files as needed e.g., edit the `CN` and `SAN` entries to match your real DNS/IP.
 
 ```bash
 # Create the lab artifact directories if not already existing
@@ -146,7 +148,8 @@ cp templates/server_v3.ext.template server-tls-items/server_v3.ext
 
 ### 5) Create CSR Configuration for Server Identity
 
-Review the `server-tls-items/server.csr.cnf` file created in the previous step to ensure the values are set correctly:
+Review the `server-tls-items/server.csr.cnf` file created in the previous step to ensure the values are set correctly. If not, make any updates required.
+- **Important**: remember to replace placeholders like `your-domain-or-ip` with your real DNS name or IP in the `CN` and `SAN` entries.
 
 ```ini
 [req]
@@ -165,9 +168,14 @@ emailAddress = admin@example.com
 CN = your-domain-or-ip
 ```
 
-Replace `your-domain-or-ip` with your real DNS name or IP.
 
 ### 6) Generate the Server Private Key and Certificate Signing Request (CSR)
+
+The command below generates two items in the `server-tls-items` folder: 
+1. The **Server Private Key** (`server-tls-items/server-private-key.pem`) and
+2. The Certificate Signing Request (**CSR**) for the Server (`server-tls-items/server.csr`).
+
+The `server.csr` file is generated using the configuration file created in the previous step (i.e., `server-tls-items/server.csr.cnf`).
 
 ```bash
 openssl req -new -nodes \
@@ -178,25 +186,28 @@ openssl req -new -nodes \
 
 | Option / Parameter | Meaning |
 |------|-------------|
-| `openssl req` | `openssl req` starts the OpenSSL certificate request tool. In this step, it is used to generate a server private key and CSR. |
+| `openssl req` | `openssl req` starts the OpenSSL certificate request tool. In this step, it is used to generate a server private key and a CSR. |
 | `-new` | The `-new` option tells OpenSSL to create a brand-new CSR. |
-| `-nodes` | The `-nodes` option means "no DES/encryption" for the private key output, so the key is not protected by a passphrase. |
-| `-out server-tls-items/server.csr` | The `-out` option specifies the location or path to output the generated CSR file to. In this case, it writes the generated CSR to `server-tls-items/server.csr`. |
-| `-keyout server-tls-items/server-private-key.pem` | The `-keyout` option specifies where to save the generated server private key. In this case, it writes the key to `server-tls-items/server-private-key.pem`. |
-| `-config server-tls-items/server.csr.cnf` | The `-config` option tells OpenSSL which configuration file to read for subject details and request settings. Here, it reads `server-tls-items/server.csr.cnf`. |
+| `-nodes` | The `-nodes` option means "no DES/Encryption" for the private key output. <br/> Therefore, the private key is not protected by a passphrase. |
+| `-out server-tls-items/server.csr` | The `-out` option specifies the location or path to output the generated CSR file to. <br/> In this case, it saves the generated CSR to `server-tls-items/server.csr`. |
+| `-keyout server-tls-items/server-private-key.pem` | The `-keyout` option specifies where to save the generated server private key. <br/> In this case, it saves the key to `server-tls-items/server-private-key.pem`. |
+| `-config server-tls-items/server.csr.cnf` | The `-config` option tells OpenSSL which configuration file to read for subject details and request settings. <br/> In this case, it reads `server-tls-items/server.csr.cnf`. |
 
+<br/>
 Restrict the server private key permissions to 600. This makes the file private so that only the owner can read and write to it.
 
 ```bash
 chmod 600 server-tls-items/server-private-key.pem
 ```
 
-### 7) Create or Review Server Certificate Extensions (SAN) Configuration File
+### 7) Create or Review the Server Certificate Extensions (SAN) Configuration File
 
 Certificate extensions are additional data fields that define extra features or constraints for a certificate, such as the Subject Alternative Name (SAN) for securing multiple domains.    
 For more information, you can explore the technical documentation on certificate configurations online (https://docs.openssl.org/3.6/man5/x509v3_config/#subject-alternative-name).    
 
-Create or review the `server-tls-items/server_v3.ext` file created in Step 4 to ensure the values are set correctly:
+Create or review the `server-tls-items/server_v3.ext` file created in Step 4 to ensure the values are set correctly.
+
+- Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n` entries as needed.
 
 ```ini
 authorityKeyIdentifier=keyid,issuer
@@ -210,9 +221,14 @@ DNS.1 = your-domain.example.com
 IP.1 = 1.2.3.4
 ```
 
-Set SAN values to what clients will use in the URL. Add/remove `DNS.n` and `IP.n` entries as needed.
+### 8) Sign the Server Certificate with your Certificate Authority (CA) (Root CA in our case)
 
-### 8) Sign the Server Certificate with your CA (Root CA in our case)
+In the [Step 6](#6-generate-the-server-private-key-and-certificate-signing-request-csr), you created a CSR (Certificate Signing Request) for the server. <br/>
+In this step, you will sign the CSR with your CA's private key to generate a server certificate. <br/>
+This is how it works in the real world, you would typically have your CSR signed by a well known commercial CA (for public websites) or an internal well-known CA (for internal-only websites and systems).
+
+<br/>
+The signing command is as follows:
 
 ```bash
 openssl x509 -req \
@@ -229,15 +245,15 @@ openssl x509 -req \
 
 | Option / Parameter | Meaning |
 |------|-------------|
-| `openssl x509` | `openssl x509` starts the OpenSSL certificate signing/inspection tool. In this step, it signs the server CSR to issue a server certificate. |
+| `openssl x509` | `openssl x509` starts the OpenSSL certificate signing/inspection tool. <br/> In this step, it signs the server CSR to issue a server certificate. |
 | `-req` | The `-req` option tells OpenSSL that the input is a CSR request (not an existing certificate). |
-| `-in server-tls-items/server.csr` | The `-in` option specifies the CSR file to read and sign. Here, it reads `server-tls-items/server.csr`. |
-| `-CA root-ca-tls-items/root-ca-cert.pem` | The `-CA` option specifies the CA certificate to use as the issuer certificate. Here, it uses your Root CA certificate. |
+| `-in server-tls-items/server.csr` | The `-in` option specifies the CSR file to read and sign. <br/> Here, it reads `server-tls-items/server.csr`. |
+| `-CA root-ca-tls-items/root-ca-cert.pem` | The `-CA` option specifies the CA certificate to use as the issuer certificate. <br/> Here, it uses your Root CA certificate. |
 | `-CAkey root-ca-tls-items/root-ca-private-key.pem` | The `-CAkey` option specifies the CA private key used to sign the server certificate. |
 | `-CAcreateserial` | The `-CAcreateserial` option tells OpenSSL to create a serial-number file if it does not exist yet. |
 | `-CAserial root-ca-tls-items/root-ca-cert.srl` | The `-CAserial` option specifies the serial-number file OpenSSL should use/manage for issued certificates. |
-| `-out server-tls-items/server-cert.pem` | The `-out` option specifies where to save the signed server certificate. Here, it writes to `server-tls-items/server-cert.pem`. |
-| `-days 825` | The `-days` option sets the certificate validity period. Here, the server certificate is valid for 825 days. |
+| `-out server-tls-items/server-cert.pem` | The `-out` option specifies where to save the signed server certificate. <br/> Here, it writes to `server-tls-items/server-cert.pem`. |
+| `-days 825` | The `-days` option sets the certificate validity period. <br/> Here, the server certificate is valid for 825 days. |
 | `-sha256` | The `-sha256` option tells OpenSSL to sign using SHA-256. |
 | `-extfile server-tls-items/server_v3.ext` | The `-extfile` option points to the extension file (including SAN entries) to include in the issued server certificate. |
 
@@ -246,7 +262,7 @@ openssl x509 -req \
 The sample command uses **825** because that number often appears in older examples about **public** TLS certificates (the kind issued by well-known CAs that browsers trust by default). Since **September 2020**, major browsers have pushed toward **shorter maximum lifetimes** for **public** certificates—often around **398 days**.   
 
 In this lab, your server certificate is signed by **your private Root CA** (not by a **public** CA), so limits on **public** certificate lifetimes do not apply to your `-days` choice here.    
-However, when you work on real **public** sites later, shorter certificate lifetimes help because:
+However, when you work on real **public** sites later, shorter certificate lifetimes help because of the following reasons:
 
 1. **Less time at risk if a certificate is stolen or mis-issued** (smaller window for abuse).
 2. **Faster rollout of stronger algorithms** when the industry deprecates older ones (e.g., SHA-1).
@@ -254,9 +270,18 @@ However, when you work on real **public** sites later, shorter certificate lifet
 
 ### 9) Verify the Issued Certificate
 
+In this step, you will verify the server certificate created in the previous step. Use the command below to do so:
+
 ```bash
 openssl x509 -in server-tls-items/server-cert.pem -noout -text
 ```
+
+| Option / Parameter | Meaning |
+|------|-------------|
+| `openssl x509` | `openssl x509` runs the OpenSSL certificate inspection/signing tool. In this step, it is used to inspect and verify the issued server certificate. |
+| `-in server-tls-items/server-cert.pem` | The `-in` option specifies which certificate file to read. Here, it reads `server-tls-items/server-cert.pem`. |
+| `-noout` | The `-noout` option suppresses the default certificate output format and shows only the information requested by other flags. |
+| `-text` | The `-text` option prints the certificate details in a readable text format (issuer, subject, SANs, validity, extensions, and more). |
 
 Confirm the following:
 
