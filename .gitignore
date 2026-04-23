@@ -11,8 +11,10 @@ server-private-key.pem
 server-cert.pem
 
 # Local TLS artifact directories
-server-tls-items/
-root-ca-tls-items/
+server-tls-items/*
+!server-tls-items/.gitkeep
+root-ca-tls-items/*
+!root-ca-tls-items/.gitkeep
 
 # Visual Studio Code — multi-root workspace definitions
 *.code-workspace

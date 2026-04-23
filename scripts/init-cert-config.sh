@@ -3,9 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_DIR="$ROOT_DIR/templates"
+SERVER_TLS_DIR="$ROOT_DIR/server-tls-items"
+ROOT_CA_TLS_DIR="$ROOT_DIR/root-ca-tls-items"
 
-CSR_TARGET="$ROOT_DIR/server.csr.cnf"
-EXT_TARGET="$ROOT_DIR/server_v3.ext"
+CSR_TARGET="$SERVER_TLS_DIR/server.csr.cnf"
+EXT_TARGET="$SERVER_TLS_DIR/server_v3.ext"
 
 CSR_TEMPLATE="$TEMPLATE_DIR/server.csr.cnf.template"
 EXT_TEMPLATE="$TEMPLATE_DIR/server_v3.ext.template"
@@ -19,6 +21,7 @@ done
 
 echo "Initialising TLS certificate config files"
 echo "-----------------------------------------"
+mkdir -p "$SERVER_TLS_DIR" "$ROOT_CA_TLS_DIR"
 cp "$CSR_TEMPLATE" "$CSR_TARGET"
 cp "$EXT_TEMPLATE" "$EXT_TARGET"
 
@@ -153,14 +156,17 @@ echo "  - $EXT_TARGET"
 
 echo
 echo "Here are your next steps (please refer to the Lab Guide for detailed instructions):"
-echo "  openssl req -new -nodes -out server.csr -keyout server-private-key.pem -config server.csr.cnf"
+echo "  openssl req -new -nodes \\"
+echo "    -out server-tls-items/server.csr \\"
+echo "    -keyout server-tls-items/server-private-key.pem \\"
+echo "    -config server-tls-items/server.csr.cnf"
 echo "  openssl x509 -req \\"
-echo "    -in server.csr \\"
-echo "    -CA root-ca-cert.pem \\"
-echo "    -CAkey root-ca-private-key.pem \\"
+echo "    -in server-tls-items/server.csr \\"
+echo "    -CA root-ca-tls-items/root-ca-cert.pem \\"
+echo "    -CAkey root-ca-tls-items/root-ca-private-key.pem \\"
 echo "    -CAcreateserial \\"
-echo "    -out server-cert.pem \\"
+echo "    -out server-tls-items/server-cert.pem \\"
 echo "    -days 825 \\"
 echo "    -sha256 \\"
-echo "    -extfile server_v3.ext"
+echo "    -extfile server-tls-items/server_v3.ext"
 echo
