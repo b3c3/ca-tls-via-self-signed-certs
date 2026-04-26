@@ -362,7 +362,7 @@ sudo cp templates/apache-index.html /var/www/html/index.html
 
 ### 1) Open inbound HTTPS in Security Group
 
-- Protocol: TCP
+- Protocol: HTTPS (TCP)
 - Port: `443`
 - Source: your test IP (preferred) or `0.0.0.0/0` for broad access
 
