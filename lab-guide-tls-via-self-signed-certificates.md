@@ -1,14 +1,16 @@
 # Lab Guide: TLS via a Private Self-Signed CA
 
-<style>
+<style><!--
 /* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
-   Applies on-screen and in print: no horizontal scrollbar, lines wrap to fit the available width. */
+   Applies on-screen and in print. The <!-- ... --> wrapper hides this block on GitHub
+   (which strips <style> tags but would otherwise show the CSS as visible text), while
+   browsers in Cursor/VS Code's markdown preview still parse and apply the rules. */
 pre, pre code {
   white-space: pre-wrap !important;
   word-break: break-word !important;
   overflow-wrap: anywhere !important;
 }
-</style>
+--></style>
 
 ## Document Metadata
 
