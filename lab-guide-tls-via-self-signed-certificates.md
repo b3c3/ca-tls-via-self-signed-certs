@@ -601,7 +601,7 @@ How production differs:
 
 
 ### Markdown Display & Print Styles
-If the display & print CSS styles show up in your view, please ignore them, they are not part of the lab guide.
+If the display & print CSS styles show up in your view (below this notice), please ignore them, they are not part of the lab guide.
 They are just used to make the display and print formatting better.
 <style>
 /* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
