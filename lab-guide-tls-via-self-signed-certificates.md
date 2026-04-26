@@ -1,5 +1,15 @@
 # Lab Guide: TLS via a Private Self-Signed CA
 
+<style>
+/* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
+   Applies on-screen and in print: no horizontal scrollbar, lines wrap to fit the available width. */
+pre, pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+</style>
+
 ## Document Metadata
 
 - Owner: CIL Academy
@@ -108,6 +118,12 @@ chmod 600 root-ca-tls-items/root-ca-private-key.pem
 
 #### 3) Create the CA Certificate
 
+Command in one line:    
+```bash
+openssl req -new -x509 -days 3650 -sha256 -key root-ca-tls-items/root-ca-private-key.pem -out root-ca-tls-items/root-ca-cert.pem
+```
+
+Command in multiple lines (applicable to native bash terminals)
 ```bash
 openssl req -new -x509 \
   -days 3650 \
@@ -198,6 +214,12 @@ The command below generates two items in the `server-tls-items` folder:
 
 The `server.csr` file is generated using the configuration file created in the previous step (i.e., `server-tls-items/server.csr.cnf`).
 
+Command in one line:    
+```bash
+openssl req -new -nodes -out server-tls-items/server.csr -keyout server-tls-items/server-private-key.pem -config server-tls-items/server.csr.cnf
+```
+
+Command in multiple lines (applicable to native bash terminals)
 ```bash
 openssl req -new -nodes \
   -out server-tls-items/server.csr \
@@ -251,6 +273,12 @@ This is how it works in the real world — you would typically have your CSR sig
 <br/>
 The signing command is as follows:
 
+Command in one line:    
+```bash
+openssl x509 -req -in server-tls-items/server.csr -CA root-ca-tls-items/root-ca-cert.pem -CAkey root-ca-tls-items/root-ca-private-key.pem -CAcreateserial -CAserial root-ca-tls-items/root-ca-cert.srl -out server-tls-items/server-cert.pem -days 825 -sha256 -extfile server-tls-items/server_v3.ext
+```
+
+Command in multiple lines (applicable to native bash terminals)
 ```bash
 openssl x509 -req \
   -in server-tls-items/server.csr \
