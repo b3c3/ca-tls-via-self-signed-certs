@@ -600,7 +600,9 @@ How production differs:
 - For training labs, creating your own CA is faster and lower cost than obtaining and managing publicly trusted certificates.
 
 
-
+### Markdown Display & Print Styles
+If the display & print CSS styles show up in your view, please ignore them, they are not part of the lab guide.
+They are just used to make the display and print formatting better.
 <style>
 /* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
    Applies on-screen and in print. */
