@@ -260,7 +260,6 @@ In the [Step 6](#6-generate-the-server-private-key-and-certificate-signing-reque
 In this step, you will sign the CSR with your CA's private key to generate a server certificate. <br/>
 This is how it works in the real world — you would typically have your CSR signed by a well-known commercial CA (for public websites) or an internal well-known CA (for internal-only websites and systems).
 
-<br/>
 The signing command is as follows:
 
 Command in one line:    
