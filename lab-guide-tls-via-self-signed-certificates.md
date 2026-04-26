@@ -1,17 +1,5 @@
 # Lab Guide: TLS via a Private Self-Signed CA
 
-<style><!--
-/* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
-   Applies on-screen and in print. The <!-- ... --> wrapper hides this block on GitHub
-   (which strips <style> tags but would otherwise show the CSS as visible text), while
-   browsers in Cursor/VS Code's markdown preview still parse and apply the rules. */
-pre, pre code {
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  overflow-wrap: anywhere !important;
-}
---></style>
-
 ## Document Metadata
 
 - Owner: CIL Academy
@@ -611,6 +599,17 @@ How production differs:
 - That avoids browser trust warnings for users.
 - For training labs, creating your own CA is faster and lower cost than obtaining and managing publicly trusted certificates.
 
+
+
+<style>
+/* Wrap long code lines so commands don't get cut off in narrow previews or in printed output.
+   Applies on-screen and in print. */
+pre, pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+</style>
 
 End-of-Lab
 ---
